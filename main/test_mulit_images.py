@@ -17,7 +17,6 @@ from evluate.visualize_result import visualize_compare_result, visualize_iter_re
 from model.cnn_registration_model import CNNRegistration
 from tnf_transform.img_process import preprocess_image, NormalizeImage, NormalizeImageDict
 from tnf_transform.transformation import AffineTnf, affine_transform_opencv, affine_transform_pytorch, AffineGridGen
-from train import setRandomSeed
 from util.pytorchTcv import theta2param, param2theta
 from util.time_util import calculate_diff_time
 from traditional_ntg.estimate_affine_param import estimate_affine_param, estimate_param_batch
@@ -208,19 +207,17 @@ def main():
 
     print("开始进行测试")
 
-    #setRandomSeed(900)
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     ntg_checkpoint_path = "../trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
-    #ntg_checkpoint_path = "../trained_weight/output/best_checkpoint_NTG_resnet101.pth.tar"
-    #ntg_checkpoint_path = "../trained_weight/2000best_checkpoint_NTG_resnet101.pth.tar"
-    # image_path = '../datasets/row_data/VOC/'
-    # label_path = '../datasets/row_data/label_file/aff_param2.csv'
-    #image_path = '../datasets/row_data/COCO/'
+    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     image_path = '/home/zlk/datasets/coco_test2017'
-    #label_path = '../datasets/row_data/label_file/aff_param_coco_random_small.csv'
-    #label_path = '../datasets/row_data/label_file/aff_param_coco_random_bigger.csv'
-    label_path = '../datasets/row_data/label_file/aff_param_coco_test2017.csv'
+
+    use_custom_aff_param = False
+    if use_custom_aff_param:
+        label_path = '../datasets/row_data/label_file/coco_test2017_custom_param.csv'
+    else:
+        label_path = '../datasets/row_data/label_file/coco_test2017_paper_param.csv'
 
     threshold = 10
 

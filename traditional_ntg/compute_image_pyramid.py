@@ -30,11 +30,11 @@ def compute_image_pyramid(image,f,nL,ration):
 
         # 使用skimage来resize图片：https://scikit-image.org/docs/stable/auto_examples/transform/plot_rescale.html
 
-        # im1 = np.array(Image.fromarray(tmp[:,:,0]).resize((int(tmp[:,:,0].shape[0]*ration),int(tmp[:,:,0].shape[1]*ration))))
-        # im2 = np.array(Image.fromarray(tmp[:,:,1]).resize((int(tmp[:,:,1].shape[0]*ration),int(tmp[:,:,1].shape[1]*ration))))
+        im1 = np.array(Image.fromarray(tmp[:,:,0]).resize((int(tmp[:,:,0].shape[0]*ration),int(tmp[:,:,0].shape[1]*ration))))
+        im2 = np.array(Image.fromarray(tmp[:,:,1]).resize((int(tmp[:,:,1].shape[0]*ration),int(tmp[:,:,1].shape[1]*ration))))
 
-        im1 = smi.imresize(tmp[:,:,0],size=ration)/255.0
-        im2 = smi.imresize(tmp[:,:,1],size=ration)/255.0
+        # im1 = smi.imresize(tmp[:,:,0],size=ration)/255.0
+        # im2 = smi.imresize(tmp[:,:,1],size=ration)/255.0
         tmp = np.stack((im1,im2),2)
 
         P.append(tmp)

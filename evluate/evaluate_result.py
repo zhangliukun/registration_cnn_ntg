@@ -82,10 +82,10 @@ def compare_affine_param_generator(random_t=0.2,random_s=0.2,
 
     start_time = time.time()
     theta_m = random_affine()
-    theta_m = torch.Tensor(theta_m[0:2])
+    theta_m = torch.Tensor(theta_m)
     elpased = calculate_diff_time(start_time)
     print('随机仿射换换时间:', elpased)
 
-compare_img_resize()
+#compare_img_resize()
 #compare_affine_param_generator()
 

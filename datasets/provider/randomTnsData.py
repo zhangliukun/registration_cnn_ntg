@@ -13,7 +13,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from tnf_transform.img_process import random_affine
+from tnf_transform.img_process import random_affine, geometric_random_affine
 from tnf_transform.transformation import AffineTnf
 from traditional_ntg.image_util import symmetricImagePad
 from util.time_util import calculate_diff_time
@@ -78,7 +78,8 @@ class RandomTnsData(Dataset):
         image = torch.from_numpy(image)
 
         theta = random_affine()
-        theta = torch.from_numpy(theta[0:2].astype(np.float32))
+        #theta = geometric_random_affine()
+        theta = torch.from_numpy(theta.astype(np.float32))
 
         sample = {'image': image, 'theta': theta, 'name': image_name}
 

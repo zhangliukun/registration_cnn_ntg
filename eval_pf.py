@@ -32,17 +32,17 @@ def correct_keypoints(source_points,warped_points,L_pck,alpha=0.1):
     return (num_of_correct_points,num_of_points)
 
 def main():
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    print("eval pf dataset")
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-    ntg_checkpoint_path = "trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
     ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
-    #ntg_checkpoint_path = "../trained_weight/2000best_checkpoint_NTG_resnet101.pth.tar"
+    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     # image_path = '../datasets/row_data/VOC/'
     # label_path = '../datasets/row_data/label_file/aff_param2.csv'
-    image_path = '../datasets/row_data/COCO/'
-    label_path = '../datasets/row_data/label_file/aff_param_coco.csv'
+    #image_path = '../datasets/row_data/COCO/'
+    #label_path = '../datasets/row_data/label_file/aff_param_coco.csv'
 
-    pf_data_path = '../datasets/row_data/pf_data'
+    pf_data_path = 'datasets/row_data/pf_data'
 
     batch_size = 16
     # 加载模型

@@ -1,11 +1,20 @@
 import argparse
+import random
 from os import makedirs, remove
 from os.path import exists, join, basename, dirname
 
+import numpy as np
 import shutil
 import torch
 from torch.autograd import Variable
 
+
+def init_seeds(seed=0):
+    torch.cuda.empty_cache()
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # torch.backends.cudnn.deterministic = True  # https://pytorch.org/docs/stable/notes/randomness.html
 
 def save_checkpoint(state, is_best, file):
     model_dir = dirname(file)

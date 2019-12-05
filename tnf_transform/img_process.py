@@ -32,7 +32,21 @@ def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10):
 
     M = S @ T @ R # Combined rotation matrix. ORDER IS IMPORTANT HERE!!
 
-    return M
+    return M[0:2]
+
+def geometric_random_affine(random_t=0.5, random_s=0.5,random_alpha=1/6):
+
+    alpha = (np.random.rand(1) - 0.5) * 2 * np.pi * random_alpha
+    theta = np.random.rand(6)
+    theta[[2, 5]] = (theta[[2, 5]] - 0.5) * 2 * random_t
+    theta[0] = (1 + (theta[0] - 0.5) * 2 * random_s) * np.cos(alpha)
+    theta[1] = (1 + (theta[1] - 0.5) * 2 * random_s) * (-np.sin(alpha))
+    theta[3] = (1 + (theta[3] - 0.5) * 2 * random_s) * np.sin(alpha)
+    theta[4] = (1 + (theta[4] - 0.5) * 2 * random_s) * np.cos(alpha)
+    theta = theta.reshape(2, 3)
+
+    return theta
+
 
 
 def preprocess_image(image,resize=True,use_cuda=True):    # image (240,240,3)

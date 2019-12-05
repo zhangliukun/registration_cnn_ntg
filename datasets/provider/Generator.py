@@ -10,6 +10,7 @@ import cv2
 
 #row_data_dir_path = '/Users/zale/project/myself/registration_cnn_ntg/datasets/row_data/VOC/'
 from tnf_transform.img_process import random_affine
+from train import init_seeds
 
 
 def read_row_data(data_path):
@@ -23,7 +24,9 @@ def affine_transform(image,param):
     image = cv2.warpAffine(image,param,(width,height))
     return image
 
-#def generator_affine_param(random_t=0.2,random_s=0.2,random_alpha = 1/8,random_tps=0.4,to_dict = False):
+'''
+论文中的随机仿射变换参数生成
+'''
 def generator_affine_param(random_t=0.2,random_s=0.2,random_alpha = 1/8,random_tps=0.4,to_dict = False):
     alpha = (np.random.rand(1)-0.5) * 2 * np.pi * random_alpha
     theta = np.random.rand(6)
@@ -47,6 +50,9 @@ def generator_affine_param(random_t=0.2,random_s=0.2,random_alpha = 1/8,random_t
 
     return theta
 
+'''
+自定义的仿射变换参数生成
+'''
 def random_affine(degrees=20,translate=.2,scale=.2,shear=10,to_dict = False):
     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
     # https://medium.com/uruvideo/dataset-augmentation-with-random-homographies-a8f4b44830d4
@@ -82,12 +88,15 @@ def random_affine(degrees=20,translate=.2,scale=.2,shear=10,to_dict = False):
 
     return theta
 
-def generate_result_dict(row_data_dir_path,output_path):
+def generate_result_dict(row_data_dir_path,output_path,use_custom_random_aff = False):
     image_name_list = read_row_data(row_data_dir_path)
     param_list = []
     for i in range(len(image_name_list)):
-        #random_param_dict = generator_affine_param(to_dict=True)
-        random_param_dict = random_affine(to_dict= True)
+        if use_custom_random_aff:
+            random_param_dict = random_affine(to_dict= True)
+        else:
+            random_param_dict = generator_affine_param(to_dict=True)
+
         random_param_dict['image'] = image_name_list[i]
         param_list.append(random_param_dict)
         if i % 5000 == 0:
@@ -124,10 +133,17 @@ def test_affine_image():
         cv2.waitKey(0)
 
 #test_affine_image()
-#row_data_dir_path = '/home/zlk/datasets/coco_test2017'
-row_data_dir_path = '../row_data/COCO'
-output_path = '../row_data/label_file/aff_param_coco_random_bigger.csv'
+init_seeds(seed= 999)
+row_data_dir_path = '/home/zlk/datasets/coco_test2017'
+#row_data_dir_path = '../row_data/COCO'
 
-generate_result_dict(row_data_dir_path,output_path)
+use_custom_random_aff = True
+
+if use_custom_random_aff:
+    output_path = '../row_data/label_file/coco_test2017_custom_param.csv'
+else:
+    output_path = '../row_data/label_file/coco_test2017_paper_param.csv'
+
+generate_result_dict(row_data_dir_path,output_path,use_custom_random_aff=use_custom_random_aff)
 
 #print(random_affine(to_dict= True))

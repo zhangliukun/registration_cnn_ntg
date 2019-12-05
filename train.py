@@ -3,9 +3,11 @@ import argparse
 
 # Argument parsing
 import os
+import random
 import sys
 import time
 from collections import OrderedDict
+import numpy as np
 
 import torch
 from torch import optim
@@ -16,6 +18,7 @@ from evluate.lossfunc import NTGLoss
 from model.cnn_registration_model import CNNRegistration
 from tnf_transform.img_process import NormalizeImage, NormalizeImageDict
 from tnf_transform.transformation import AffineTnf, AffineGridGen
+from util import torch_util
 from util.torch_util import save_checkpoint
 from util.train_test_fn import train
 from visualization.train_visual import VisdomHelper
@@ -35,7 +38,7 @@ def parseArgs():
     # Optimization parameters
     parser.add_argument('--lr', type=float, default=0.000001, help='learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum constant')
-    parser.add_argument('--num-epochs', type=int, default=2000, help='number of training epochs')
+    parser.add_argument('--num-epochs', type=int, default=5000, help='number of training epochs')
     parser.add_argument('--batch-size', type=int, default=164, help='training batch size')
     parser.add_argument('--weight-decay', type=float, default=0, help='weight decay constant')
     parser.add_argument('--seed', type=int, default=1, help='Pseudo-RNG seed')
@@ -51,11 +54,10 @@ def parseArgs():
     return args
 
 
-# 随机数Seed
-def setRandomSeed(seed,use_cuda = True):
-    torch.manual_seed(seed)
-    if use_cuda:
-        torch.cuda.manual_seed(seed)
+def init_seeds(seed=0):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch_util.init_seeds(seed=seed)
 
 # 加载已经保存的模型
 def load_checkpoint(model,checkpoint_path):
@@ -70,35 +72,29 @@ def load_checkpoint(model,checkpoint_path):
     else:
         print('checkpoint file not found')
         minium_loss = sys.maxsize
+        epoch = 0
 
-    return minium_loss
+    return minium_loss,epoch
 
 
-if __name__ == '__main__':
+def start_train(training_path,load_from,out_path,vis_env,random_seed=666,log_interval=100,use_cuda=True):
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
-    use_cuda = torch.cuda.is_available()
-    args = parseArgs()
-    setRandomSeed(600)
+    init_seeds(random_seed)
 
     print("创建模型中")
-    training_dataset_path = args.training_image_path
-    checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar'
-    #checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/output/best_checkpoint_NTG_resnet101.pth.tar'
     model = CNNRegistration(use_cuda=use_cuda)
 
     print("加载权重")
-    minium_loss = load_checkpoint(model,checkpoint_path)
+    minium_loss,saved_epoch = load_checkpoint(model, load_from)
     loss = NTGLoss()
     pair_generator = RandomTnsPair(use_cuda=use_cuda)
     gridGen = AffineGridGen()
-    vis = VisdomHelper(env_name='DMN_train')
+    vis = VisdomHelper(env_name=vis_env)
 
     print("创建dataloader")
-    RandomTnsDataset = RandomTnsData(training_dataset_path,cache_images = False,
+    RandomTnsDataset = RandomTnsData(training_path, cache_images=False,
                                      transform=NormalizeImageDict(["image"]))
-    dataloader = DataLoader(RandomTnsDataset, batch_size=args.batch_size, shuffle=True, num_workers=4,pin_memory=True)
-
+    dataloader = DataLoader(RandomTnsDataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
     # 优化器
     optimizer = optim.Adam(model.FeatureRegression.parameters(), lr=args.lr)
@@ -108,18 +104,14 @@ if __name__ == '__main__':
 
     print('Starting training...')
 
-
-    for epoch in range(0, args.num_epochs):
-
+    for epoch in range(saved_epoch, args.num_epochs):
         start_time = time.time()
 
-        train_loss = train(epoch, model, loss, optimizer, dataloader, pair_generator,gridGen,vis,
-                           use_cuda=use_cuda, log_interval=100)
-
-
+        train_loss = train(epoch, model, loss, optimizer, dataloader, pair_generator, gridGen, vis,
+                           use_cuda=use_cuda, log_interval=log_interval)
 
         end_time = time.time()
-        print("epoch:",str(end_time-start_time))
+        print("epoch:", str(end_time - start_time))
 
         is_best = train_loss < minium_loss
         minium_loss = min(train_loss, minium_loss)
@@ -130,7 +122,44 @@ if __name__ == '__main__':
             'state_dict': model.state_dict(),
             'minium_loss': minium_loss,
             'optimizer': optimizer.state_dict(),
-        }, is_best, checkpoint_path)
+        }, is_best, out_path)
+
+
+if __name__ == '__main__':
+
+    train_voc2011 = True
+    if train_voc2011:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    else:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+
+    use_cuda = torch.cuda.is_available()
+    args = parseArgs()
+
+    if train_voc2011:
+        print("train voc2011")
+        vis_env = "DNN_train_voc2011"
+        checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
+        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
+        args.training_image_path = '/home/zlk/datasets/vocdata/VOC_train_2011/VOCdevkit/VOC2011/JPEGImages'
+        #args.lr = 0.0001
+        #args.lr = 0.00001
+        #args.lr = 0.000001
+        args.lr = 0.000001
+        log_interval = 30
+    else:
+        print("train coco")
+        vis_env = "DNN_train"
+        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
+        checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar'
+        args.lr = 0.000001
+        log_interval = 100
+
+
+    start_train(args.training_image_path,checkpoint_path,output_checkpoint_path,vis_env,random_seed=666,log_interval= log_interval,use_cuda=use_cuda)
+
+
 
 
 
