@@ -25,7 +25,7 @@ from util.time_util import calculate_diff_time
 class RandomTnsData(Dataset):
 
 
-    def __init__(self,training_image_path,output_size=(480,640),transform=None,cache_images = False,use_cuda = True):
+    def __init__(self,training_image_path,output_size=(480,640),paper_affine_generator = False,transform=None,cache_images = False,use_cuda = True):
         '''
         :param training_image_path:
         :param output_size:
@@ -36,6 +36,7 @@ class RandomTnsData(Dataset):
         self.out_h, self.out_w = output_size
         self.use_cuda = use_cuda
         self.cache_images = cache_images
+        self.paper_affine_generator = paper_affine_generator
         # read image file
         self.training_image_path = training_image_path
         self.train_data = os.listdir(self.training_image_path)
@@ -77,8 +78,11 @@ class RandomTnsData(Dataset):
         image = np.ascontiguousarray(image, dtype=np.float32)  # uint8 to float32
         image = torch.from_numpy(image)
 
-        theta = random_affine()
-        #theta = geometric_random_affine()
+        if self.paper_affine_generator:
+            theta = geometric_random_affine()
+        else:
+            theta = random_affine()
+
         theta = torch.from_numpy(theta.astype(np.float32))
 
         sample = {'image': image, 'theta': theta, 'name': image_name}
@@ -88,91 +92,6 @@ class RandomTnsData(Dataset):
 
         # elpased = calculate_diff_time(total_start_time)
         # print('getitem时间:',elpased)     # 0.011s
-
-        return sample
-
-    def __init1__(self,training_image_path,output_size=(480,640),transform=None,random_t=0.2,random_s=0.2,
-                 random_alpha = 1/4,random_sample=True,use_cuda = True):
-        self.random_sample = random_sample
-        self.random_t = random_t
-        self.random_alpha = random_alpha
-        self.random_s = random_s
-        self.out_h, self.out_w = output_size
-        self.use_cuda = use_cuda
-        # read image file
-        self.training_image_path = training_image_path
-        self.train_data = os.listdir(self.training_image_path)
-        # copy arguments
-        self.transform = transform
-        self.affineTnf = AffineTnf(self.out_h,self.out_w,use_cuda=False)
-
-
-    def __getitem1__(self, idx):
-        total_start_time = time.time()
-        start_time = time.time()
-
-        image_name = self.train_data[idx]
-        image_path = os.path.join(self.training_image_path, image_name)
-        image = io.imread(image_path)
-
-        # elpased = calculate_diff_time(start_time)
-        # print('读入一张image：',elpased) # 0.01s
-
-        #start_time = time.time()
-
-        alpha = (torch.rand(1) - 0.5) * 2 * np.pi * self.random_alpha
-        alpha = alpha.numpy()
-        theta = torch.rand(6).numpy()
-
-        theta[[2, 5]] = (theta[[2, 5]] - 0.5) * 2 * self.random_t
-        theta[0] = (1 + (theta[0] - 0.5) * 2 * self.random_s) * np.cos(alpha)
-        theta[1] = (1 + (theta[1] - 0.5) * 2 * self.random_s) * (-np.sin(alpha))
-        theta[3] = (1 + (theta[3] - 0.5) * 2 * self.random_s) * np.sin(alpha)
-        theta[4] = (1 + (theta[4] - 0.5) * 2 * self.random_s) * np.cos(alpha)
-        theta = theta.reshape(2, 3)
-
-        # elpased = calculate_diff_time(start_time)
-        # print('计算随机变换参数：',elpased)  # 0.0004s
-
-        # # make arrays float tensor for subsequent processing
-        image = torch.Tensor(image.astype(np.float32))
-        theta = torch.Tensor(theta.astype(np.float32))
-
-        #start_time = time.time()
-        # # permute order of image to CHW
-        try:
-            image = image.transpose(1, 2).transpose(0, 1)
-        except Exception:
-            # 图片中有些图片只是单通道，如[h,w]
-            one = image.unsqueeze(0)
-            image = torch.cat((one, one, one), 0)
-
-        # elpased = calculate_diff_time(start_time)
-        # print('transpose:',elpased)  # 0.00010s
-
-        # # 时间有点长，放入dataloader的GPU处理中
-        # start_time = time.time()
-        # # Resize image using bilinear sampling with identity affine tnf
-        if image.size()[0] != self.out_h or image.size()[1] != self.out_w:
-            image = self.affineTnf(Variable(image.unsqueeze(0), requires_grad=False)).data.squeeze(0)
-        #
-        # elpased = calculate_diff_time(start_time)
-        # print('缩放图片:',elpased)  # 0.18s
-
-
-
-        sample = {'image': image, 'theta': theta, 'name': image_name}
-
-        # start_time = time.time()
-        #
-        if self.transform:
-            image = self.transform(sample)
-        #
-        # elpased = calculate_diff_time(start_time)
-        # print('归一化图片:',elpased)     # 0.0006s
-
-        # elpased = calculate_diff_time(total_start_time)
-        # print('getitem时间:',elpased)     # 0.036s
 
         return sample
 

@@ -209,11 +209,11 @@ def main():
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-    ntg_checkpoint_path = "../trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
-    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
+    #ntg_checkpoint_path = "../trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
+    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     image_path = '/home/zlk/datasets/coco_test2017'
 
-    use_custom_aff_param = False
+    use_custom_aff_param = True
     if use_custom_aff_param:
         label_path = '../datasets/row_data/label_file/coco_test2017_custom_param.csv'
     else:
