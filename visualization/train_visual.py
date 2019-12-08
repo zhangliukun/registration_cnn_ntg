@@ -3,7 +3,7 @@ import torch
 import visdom
 
 from tnf_transform.img_process import normalize_image
-
+import numpy as np
 
 class VisdomHelper:
     def __init__(self,env_name):
@@ -43,6 +43,12 @@ class VisdomHelper:
     def drawLoss(self,epoch,train_loss):
         layout = dict(title="train_loss", xaxis={'title': 'epoch'}, yaxis={'title': 'train loss'})
         self.vis.line(X=torch.IntTensor([epoch]), Y=torch.FloatTensor([train_loss]), win="lineloss",
+                 update='new' if epoch == 0 else 'append', opts=layout)
+
+    def drawBothLoss(self,epoch,train_loss,test_loss,layout_title,x_axis = 'epoch',y_axis = 'loss',win='win'):
+        layout = dict(title=layout_title, xaxis={'title': x_axis}, yaxis={'title': y_axis},legend=['train_loss','test_loss'])
+        print(epoch, train_loss,test_loss)
+        self.vis.line(X=np.column_stack((epoch,epoch)), Y=np.column_stack((train_loss,test_loss)), win=win,
                  update='new' if epoch == 0 else 'append', opts=layout)
 
     def show_cnn_result(self,source_image_batch, warped_image_batch, target_image_batch):

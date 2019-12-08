@@ -9,7 +9,37 @@ from torchvision import transforms
 
 from tnf_transform.transformation import AffineTnf
 
-def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10):
+# #def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10):
+# def random_affine(img= None,degrees=30,translate=.3,scale=.3,shear=15):
+#     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
+#     # https://medium.com/uruvideo/dataset-augmentation-with-random-homographies-a8f4b44830d4
+#
+#     # 旋转和缩放
+#     R = np.eye(3)
+#     a = random.uniform(-degrees,degrees)
+#     s = random.uniform(1 - scale, 1 + scale)
+#     #R[:2] = cv2.getRotationMatrix2D(angle=a,center=(img.shape[1] / 2, img.shape[0] / 2),scale=s)
+#     R[:2] = cv2.getRotationMatrix2D(angle=a,center=(0,0),scale=s)
+#
+#     # 平移
+#     T = np.eye(3)
+#     T[0, 2] = random.uniform(-translate, translate)   # x translation (rate)
+#     T[1, 2] = random.uniform(-translate, translate)   # y translation (rate)
+#
+#     # Shear
+#     S = np.eye(3)
+#     S[0, 1] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # x shear (deg)
+#     S[1, 0] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # y shear (deg)
+#
+#     M = S @ T @ R # Combined rotation matrix. ORDER IS IMPORTANT HERE!!
+#
+#     return M[0:2]
+
+'''
+自定义的仿射变换参数生成
+'''
+#def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10,to_dict = False):
+def random_affine(img= None,degrees=30,translate=.3,scale=.3,shear=15,to_dict = False):
     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
     # https://medium.com/uruvideo/dataset-augmentation-with-random-homographies-a8f4b44830d4
 
@@ -30,20 +60,58 @@ def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10):
     S[0, 1] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # x shear (deg)
     S[1, 0] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # y shear (deg)
 
-    M = S @ T @ R # Combined rotation matrix. ORDER IS IMPORTANT HERE!!
+    theta = S @ T @ R # Combined rotation matrix. ORDER IS IMPORTANT HERE!!
 
-    return M[0:2]
+    theta = theta[0:2]
 
-def geometric_random_affine(random_t=0.5, random_s=0.5,random_alpha=1/6):
+    if to_dict:
+        temp = theta.reshape(6)
+        theta = {}
+        theta['p0'] = temp[0]
+        theta['p1'] = temp[1]
+        theta['p2'] = temp[2]
+        theta['p3'] = temp[3]
+        theta['p4'] = temp[4]
+        theta['p5'] = temp[5]
 
-    alpha = (np.random.rand(1) - 0.5) * 2 * np.pi * random_alpha
+    return theta
+
+# def geometric_random_affine(random_t=0.5, random_s=0.5,random_alpha=1/6):
+#
+#     alpha = (np.random.rand(1) - 0.5) * 2 * np.pi * random_alpha
+#     theta = np.random.rand(6)
+#     theta[[2, 5]] = (theta[[2, 5]] - 0.5) * 2 * random_t
+#     theta[0] = (1 + (theta[0] - 0.5) * 2 * random_s) * np.cos(alpha)
+#     theta[1] = (1 + (theta[1] - 0.5) * 2 * random_s) * (-np.sin(alpha))
+#     theta[3] = (1 + (theta[3] - 0.5) * 2 * random_s) * np.sin(alpha)
+#     theta[4] = (1 + (theta[4] - 0.5) * 2 * random_s) * np.cos(alpha)
+#     theta = theta.reshape(2, 3)
+#
+#     return theta
+
+'''
+论文中的随机仿射变换参数生成
+'''
+def generator_affine_param(random_t=0.5,random_s=0.5,random_alpha = 1/6,random_tps=0.4,to_dict = False):
+    alpha = (np.random.rand(1)-0.5) * 2 * np.pi * random_alpha
     theta = np.random.rand(6)
+
     theta[[2, 5]] = (theta[[2, 5]] - 0.5) * 2 * random_t
     theta[0] = (1 + (theta[0] - 0.5) * 2 * random_s) * np.cos(alpha)
     theta[1] = (1 + (theta[1] - 0.5) * 2 * random_s) * (-np.sin(alpha))
     theta[3] = (1 + (theta[3] - 0.5) * 2 * random_s) * np.sin(alpha)
     theta[4] = (1 + (theta[4] - 0.5) * 2 * random_s) * np.cos(alpha)
     theta = theta.reshape(2, 3)
+
+    if to_dict:
+        temp = theta.reshape(6)
+        theta = {}
+        theta['p0'] = temp[0]
+        theta['p1'] = temp[1]
+        theta['p2'] = temp[2]
+        theta['p3'] = temp[3]
+        theta['p4'] = temp[4]
+        theta['p5'] = temp[5]
 
     return theta
 

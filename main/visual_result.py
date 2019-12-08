@@ -137,7 +137,7 @@ def iterDataset(dataloader,pair_generator,ntg_model,vis,threshold=10,use_cuda=Tr
 
         # 显示CNN配准结果
         # print("显示图片")
-        #visualize_cnn_result(source_image_batch,target_image_batch,theta_estimate_batch,vis)
+        visualize_cnn_result(source_image_batch,target_image_batch,theta_estimate_batch,vis)
         # #
         # time.sleep(10)
         # 显示一个epoch的对比结果
@@ -157,12 +157,6 @@ def iterDataset(dataloader,pair_generator,ntg_model,vis,threshold=10,use_cuda=Tr
         #cnn_ntg_param_batch = estimate_param_batch(source_image_batch, target_image_batch, theta_opencv,itermax=800)
         #cnn_ntg_param_pytorch_batch = param2theta(cnn_ntg_param_batch, 240, 240, use_cuda=use_cuda)
 
-        # 网络测出来的,第1，2，3，5的值和真值是相反的，是因为在pair_generator中生成的原始图像
-        # 和目标图像对换了
-        # theta_estimate_batch[:,1] = -theta_estimate_batch[:,1]
-        # theta_estimate_batch[:,2] = -theta_estimate_batch[:,2]
-        # theta_estimate_batch[:,3] = -theta_estimate_batch[:,3]
-        # theta_estimate_batch[:,5] = -theta_estimate_batch[:,5]
         loss_cnn = grid_loss.compute_grid_loss(theta_estimate_batch,theta_GT_batch)
         #loss_ntg = grid_loss.compute_grid_loss(ntg_param_pytorch,theta_GT_batch)
         #loss_cnn_ntg = grid_loss.compute_grid_loss(cnn_ntg_param_pytorch_batch,theta_GT_batch)
@@ -187,18 +181,7 @@ def iterDataset(dataloader,pair_generator,ntg_model,vis,threshold=10,use_cuda=Tr
 
     print("计算正确率")
     compute_correct_rate(grid_loss_list,threshold=threshold)
-    #compute_correct_rate(grid_loss_ntg_list,threshold=threshold)
-    #compute_correct_rate(grid_loss_comb_list,threshold=threshold)
 
-    # grid_loss_hist = np.array(grid_loss_hist).reshape(-1)
-    # grid_loss_traditional_hist = np.array(grid_loss_traditional_hist).reshape(-1)
-    # grid_loss_hist = np.clip(grid_loss_hist,0,50)
-    # grid_loss_traditional_hist = np.clip(grid_loss_traditional_hist,0,50)
-    # plt.figure(1)
-    # plt.bar(range(len(grid_loss_hist)), grid_loss_hist, fc='b')
-    # plt.figure(2)
-    # plt.bar(range(len(grid_loss_traditional_hist)), grid_loss_traditional_hist, fc='b')
-    # plt.show()
 
 
 
@@ -209,9 +192,8 @@ def main():
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/best_checkpoint_voc2011_NTG_resnet101.pth.tar"
-    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
-    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
+    #ntg_checkpoint_path = "../trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
+    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     image_path = '/home/zlk/datasets/coco_test2017'
 
     use_custom_aff_param = True

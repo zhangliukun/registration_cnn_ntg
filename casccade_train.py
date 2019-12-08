@@ -21,7 +21,7 @@ from tnf_transform.img_process import NormalizeImage, NormalizeImageDict
 from tnf_transform.transformation import AffineTnf, AffineGridGen
 from util import torch_util
 from util.torch_util import save_checkpoint
-from util.train_test_fn import train, test
+from util.train_test_fn import train
 from visualization.train_visual import VisdomHelper
 import torch.nn as nn
 
@@ -44,14 +44,6 @@ def parseArgs():
     parser.add_argument('--trained-models-fn', type=str, default='checkpoint_adam', help='trained model filename')
     # Optimization parameters
     parser.add_argument('--lr', type=float, default=0.000001, help='learning rate')
-    parser.add_argument('--lr_scheduler', type=bool,
-                        nargs='?', const=True, default=True,
-                        help='Bool (default True), whether to use a decaying lr_scheduler')
-    parser.add_argument('--lr_max_iter', type=int, default=1000,
-                        help='Number of steps between lr starting value and 1e-6 '
-                             '(lr default min) when choosing lr_scheduler')
-
-
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum constant')
     parser.add_argument('--num-epochs', type=int, default=5000, help='number of training epochs')
     parser.add_argument('--batch-size', type=int, default=164, help='training batch size')
@@ -88,7 +80,7 @@ def load_checkpoint(model,checkpoint_path):
         else:
             model_loss = -1
         epoch = checkpoint['epoch']
-        print(epoch,"minium loss:",minium_loss,"model loss:",model_loss)
+        print(epoch,minium_loss,model_loss)
     else:
         print('checkpoint file not found')
         minium_loss = sys.maxsize
@@ -97,7 +89,7 @@ def load_checkpoint(model,checkpoint_path):
     return minium_loss,epoch
 
 
-def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_affine_generator = False,random_seed=666,log_interval=100,multi_gpu=True,use_cuda=True):
+def start_train(training_path,load_from,out_path,vis_env,paper_affine_generator = False,random_seed=666,log_interval=100,multi_gpu=True,use_cuda=True):
 
     init_seeds(random_seed)
 
@@ -112,15 +104,8 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
 
     model = model.to(device)
 
-    # 优化器 和scheduler
+    # 优化器
     optimizer = optim.Adam(model.FeatureRegression.parameters(), lr=args.lr)
-
-    if args.lr_scheduler:
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
-                                                               T_max=args.lr_max_iter,
-                                                               eta_min=1e-8)
-    else:
-        scheduler = False
 
     print("加载权重")
     minium_loss,saved_epoch= load_checkpoint(model, load_from)
@@ -151,25 +136,19 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
     print("创建dataloader")
     RandomTnsDataset = RandomTnsData(training_path, cache_images=False,paper_affine_generator = paper_affine_generator,
                                      transform=NormalizeImageDict(["image"]))
-    train_dataloader = DataLoader(RandomTnsDataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    dataloader = DataLoader(RandomTnsDataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-    testDataset = RandomTnsData(test_image_path, cache_images=False, paper_affine_generator=paper_affine_generator,
-                                     transform=NormalizeImageDict(["image"]))
-    test_dataloader = DataLoader(testDataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=False)
 
     print('Starting training...')
 
     for epoch in range(saved_epoch, args.num_epochs):
         start_time = time.time()
 
-        train_loss = train(epoch, model, loss, optimizer, train_dataloader, pair_generator, gridGen, vis,
-                           use_cuda=use_cuda, log_interval=log_interval,scheduler = scheduler)
-        test_loss = test(model,loss,test_dataloader,pair_generator,gridGen,use_cuda=use_cuda)
-
-        vis.drawBothLoss(epoch,train_loss,test_loss,'loss_table')
+        train_loss = train(epoch, model, loss, optimizer, dataloader, pair_generator, gridGen, vis,
+                           use_cuda=use_cuda, log_interval=log_interval)
 
         end_time = time.time()
-        print("epoch:", str(end_time - start_time),'秒')
+        print("epoch:", str(end_time - start_time))
 
         is_best = train_loss < minium_loss
         minium_loss = min(train_loss, minium_loss)
@@ -189,7 +168,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
 if __name__ == '__main__':
 
     train_voc2011 = True    # 根据论文在VOC2011的训练集训练
-    multi_gpu = True   #
+    multi_gpu = False   #
     paper_affine_generator = False # 是否使用CVPR论文中的仿射变换参数训练，变化比较大，可能效果不如自定义的小变化好。
     # if train_voc2011:
     #     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -197,7 +176,7 @@ if __name__ == '__main__':
     #     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     if multi_gpu:
-        os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2'
+        os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
     else:
         os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
@@ -211,24 +190,22 @@ if __name__ == '__main__':
         load_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
         output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
         args.training_image_path = '/home/zlk/datasets/vocdata/VOC_train_2011/VOCdevkit/VOC2011/JPEGImages'
-        args.test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
         #args.lr = 0.0001
         #args.lr = 0.00001
         #args.lr = 0.000001
-        args.lr = 0.000001
+        args.lr = 0.00001
         log_interval = 50
     else:
         print("train coco")
         vis_env = "DNN_train"
         output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
         load_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar'
-        args.test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
         args.lr = 0.000001
         log_interval = 100
 
 
-    start_train(args.training_image_path,args.test_image_path,load_checkpoint_path,output_checkpoint_path,vis_env,paper_affine_generator = paper_affine_generator,
-                random_seed=12455,log_interval=log_interval,multi_gpu =multi_gpu, use_cuda=use_cuda)
+    start_train(args.training_image_path,load_checkpoint_path,output_checkpoint_path,vis_env,paper_affine_generator = paper_affine_generator,
+                random_seed=13134,log_interval=log_interval,multi_gpu =multi_gpu, use_cuda=use_cuda)
 
     if multi_gpu:
         dist.destroy_process_group() if torch.cuda.device_count() > 1 else None
