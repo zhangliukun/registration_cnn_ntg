@@ -42,6 +42,7 @@ def generate_result_dict(row_data_dir_path,output_path,use_custom_random_aff = F
         #print(image_name_list[i],param_list[i])
 
     write_csv(output_path,param_list)
+    print("写入完成")
 
 def write_csv(output_path,datadicts):
     with open(output_path,mode='w') as csv_file:
@@ -71,14 +72,18 @@ def test_affine_image():
         cv2.waitKey(0)
 
 #test_affine_image()
-init_seeds(seed= 23422)
+init_seeds(seed= 23442)
 #row_data_dir_path = '/home/zlk/datasets/coco_test2017'
-row_data_dir_path = '../row_data/COCO'
+#row_data_dir_path = '../row_data/COCO'
+#row_data_dir_path = '/home/zlk/datasets/coco_test2017_n2000'
+row_data_dir_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/nir_image'
 
 use_custom_random_aff = True
 
 if use_custom_random_aff:
     output_path = '../row_data/label_file/coco_test2017_custom_param.csv'
+    output_path = '../row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
+    output_path = '../row_data/label_file/nir_rgb_custom_20r_param.csv'
 else:
     output_path = '../row_data/label_file/coco_test2017_paper_param.csv'
 

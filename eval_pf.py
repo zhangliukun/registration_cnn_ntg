@@ -33,11 +33,13 @@ def correct_keypoints(source_points,warped_points,L_pck,alpha=0.1):
 
 def main():
     print("eval pf dataset")
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar"
+    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar"
     ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
-    # image_path = '../datasets/row_data/VOC/'
+    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_20r_NTG_resnet101.pth.tar"
+    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_30r_NTG_resnet101.pth.tar"
+    # image_path = '../datasets/row_data/VOC/3
     # label_path = '../datasets/row_data/label_file/aff_param2.csv'
     #image_path = '../datasets/row_data/COCO/'
     #label_path = '../datasets/row_data/label_file/aff_param_coco.csv'

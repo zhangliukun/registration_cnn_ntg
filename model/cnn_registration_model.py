@@ -26,8 +26,8 @@ class FeatureExtraction(torch.nn.Module):
         if feature_extraction_cnn == 'resnet101':
             self.model = models.resnet101(pretrained=True)
             # 为了符合单通道的图片，所以这边修改网络的channel
-            self.model.conv1.in_channels=1
-            self.model.conv1.weight.data = self.model.conv1.weight.data[:,0,:,:][:,np.newaxis,:,:]
+            # self.model.conv1.in_channels=1
+            # self.model.conv1.weight.data = self.model.conv1.weight.data[:,0,:,:][:,np.newaxis,:,:]
             #
             resnet_feature_layers = ['conv1',
                                      'bn1',

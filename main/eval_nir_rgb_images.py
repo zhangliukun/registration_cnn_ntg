@@ -8,6 +8,8 @@ import cv2
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
+from datasets.provider import nirrgbData
+from datasets.provider.nirrgbData import NirRgbData, NirRgbTnsPair
 from datasets.provider.randomTnsData import RandomTnsPair
 from datasets.provider.singlechannelData import SinglechannelData, SingleChannelPairTnf
 from datasets.provider.test_dataset import TestDataset
@@ -48,7 +50,7 @@ def createModel(ntg_checkpoint_path,use_cuda=True):
 
     return ntg_model
 
-def createDataloader(image_path,label_path,batch_size = 16,use_cuda=True):
+def createDataloader(nir_path,rgb_path,label_path,batch_size = 16,use_cuda=True):
     '''
     创建dataloader
     :param image_path:
@@ -57,11 +59,9 @@ def createDataloader(image_path,label_path,batch_size = 16,use_cuda=True):
     :param use_cuda:
     :return:
     '''
-    #dataset = SinglechannelData(image_path,label_path,transform=NormalizeImage(normalize_range=True, normalize_img=False))
-    dataset = TestDataset(image_path,label_path,transform=NormalizeImageDict(["image"]))
+    dataset = NirRgbData(nir_path,rgb_path,label_path,transform=NormalizeImageDict(["nir_image","rgb_image"]))
     dataloader = DataLoader(dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
-    #pair_generator = SingleChannelPairTnf(use_cuda=use_cuda)
-    pair_generator = RandomTnsPair(use_cuda=use_cuda)
+    pair_generator = NirRgbTnsPair(use_cuda=use_cuda)
 
     return dataloader,pair_generator
 
@@ -139,7 +139,7 @@ def iterDataset(dataloader,pair_generator,ntg_model,vis,threshold=10,use_cuda=Tr
         # print("显示图片")
         #visualize_cnn_result(source_image_batch,target_image_batch,theta_estimate_batch,vis)
         # #
-        # time.sleep(10)
+        #time.sleep(5)
         # 显示一个epoch的对比结果
         #visualize_compare_result(source_image_batch,target_image_batch,theta_GT_batch,theta_estimate_batch,use_cuda=use_cuda)
 
@@ -212,28 +212,29 @@ def main():
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/best_checkpoint_voc2011_NTG_resnet101.pth.tar"
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar"
+    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101_distributed.pth.tar"
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_20r_NTG_resnet101.pth.tar"
-    test_image_path = '/home/zlk/datasets/coco_test2017'
-    # test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
+
+    nir_image_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/nir_image'
+    rgb_image_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/rgb_image'
 
     use_custom_aff_param = True
     if use_custom_aff_param:
-        label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
-        label_path = '../datasets/row_data/label_file/coco_test2017_custom_param.csv'   #20r
-        #label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_param.csv'
+        #label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
+        label_path = '../datasets/row_data/label_file/nir_rgb_custom_20r_param.csv'
     else:
         label_path = '../datasets/row_data/label_file/coco_test2017_paper_param.csv'
 
     threshold = 10
 
-    batch_size = 164
+    batch_size = 16
     # 加载模型
     use_cuda = torch.cuda.is_available()
 
     vis = VisdomHelper(env_name='DMN_test')
 
     ntg_model = createModel(ntg_checkpoint_path,use_cuda=use_cuda)
-    dataloader,pair_generator =  createDataloader(test_image_path,label_path,batch_size,use_cuda = use_cuda)
+    dataloader,pair_generator =  createDataloader(nir_image_path,rgb_image_path,label_path,batch_size,use_cuda = use_cuda)
     iterDataset(dataloader,pair_generator,ntg_model,vis,threshold=threshold,use_cuda=use_cuda)
 
 if __name__ == '__main__':

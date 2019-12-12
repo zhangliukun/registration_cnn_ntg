@@ -12,7 +12,8 @@ from tnf_transform.transformation import AffineTnf, AffineGridGen
 from util.time_util import calculate_diff_time
 
 
-def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,vis,use_cuda=True,log_interval=50,scheduler= False):
+def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,vis,use_cuda=True,
+          gpu_id = None,log_interval=50,scheduler= False):
 
     model.train()
     # train_loss = torch.Tensor([0])
@@ -31,6 +32,9 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
         #     print("一个batch的时间:",elpased)
 
         optimizer.zero_grad()
+
+        if gpu_id is not None:
+            batch = batch.cuda(gpu_id,non_blocking=True)
 
         # 计算仿射变换参数
         # start_time = time.time()
@@ -92,7 +96,8 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
 
     train_loss /= len(dataloader)
     train_loss = train_loss.item()
-    print('learning rate:',scheduler.get_lr()[-1])
+    if scheduler:
+        print('learning rate:',scheduler.get_lr()[-1])
     print('Train set: Average loss: {:.4f}'.format(train_loss))
     print('Time:',time.asctime(time.localtime(time.time())))
 

@@ -7,6 +7,7 @@ import numpy as np
 import shutil
 import torch
 from torch.autograd import Variable
+import torch.distributed as dist
 
 
 def init_seeds(seed=0):
@@ -16,9 +17,19 @@ def init_seeds(seed=0):
     torch.cuda.manual_seed_all(seed)
     # torch.backends.cudnn.deterministic = True  # https://pytorch.org/docs/stable/notes/randomness.html
 
-def select_device(force_cpu=False, apex=False):
+def select_device(multi_process= False,force_cpu=False, apex=False):
     # apex if mixed precision training https://github.com/NVIDIA/apex
     cuda = False if force_cpu else torch.cuda.is_available()
+
+    local_rank = 0
+
+    # if multi_process:
+    #     local_rank = dist.get_rank()
+    #     torch.cuda.set_device(local_rank)
+    #     device = torch.device('cuda', local_rank)
+    # else:
+    #     device = torch.device('cuda:0' if cuda else 'cpu')
+
     device = torch.device('cuda:0' if cuda else 'cpu')
 
     if not cuda:
@@ -37,7 +48,7 @@ def select_device(force_cpu=False, apex=False):
                   (cuda_str, i, x[i].name, x[i].total_memory / c))
 
     print('')  # skip a line
-    return device
+    return device,local_rank
 
 def save_checkpoint(state, is_best, file):
     model_dir = dirname(file)

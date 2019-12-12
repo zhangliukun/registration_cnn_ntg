@@ -127,8 +127,6 @@ class RandomTnsPair(object):
         # image_batch = Variable(image_batch, requires_grad=False)
         # theta_batch = Variable(theta_batch, requires_grad=False)
 
-
-
         indices_R = torch.tensor([choice(self.channel_choicelist)])
         indices_G = torch.tensor([choice(self.channel_choicelist)])
 

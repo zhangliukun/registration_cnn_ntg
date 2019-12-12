@@ -38,8 +38,8 @@ from tnf_transform.transformation import AffineTnf
 '''
 自定义的仿射变换参数生成
 '''
-#def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10,to_dict = False):
-def random_affine(img= None,degrees=30,translate=.3,scale=.3,shear=15,to_dict = False):
+def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10,to_dict = False):
+#def random_affine(img= None,degrees=30,translate=.3,scale=.3,shear=15,to_dict = False):
     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
     # https://medium.com/uruvideo/dataset-augmentation-with-random-homographies-a8f4b44830d4
 
