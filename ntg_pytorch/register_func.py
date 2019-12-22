@@ -5,7 +5,8 @@ import numpy as np
 import torch
 
 from ntg_pytorch.register_loss import ntg_gradient_torch
-from ntg_pytorch.register_pyramid import compute_pyramid
+from ntg_pytorch.register_pyramid import compute_pyramid, compute_pyramid_pytorch, ScaleTnf
+
 
 def scale_image(img,IMIN,IMAX):
     return (img-IMIN)/(IMAX-IMIN)
@@ -28,36 +29,31 @@ def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
 
     batch_size = source_batch.shape[0]
 
-    # source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
-    # target_batch_max = torch.max(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
-    #
-    # source_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
-    # target_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+    scaleTnf = ScaleTnf()
 
-    # IMAX = np.max([np.max(source_batch.numpy()),np.max(target_batch.numpy())])
-    # IMIN = np.min([np.min(source_batch.numpy()),np.min(target_batch.numpy())])
+    source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+    target_batch_max = torch.max(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
 
-    IMAX = np.max([np.max(source_batch),np.max(target_batch)])
-    IMIN = np.min([np.min(source_batch),np.min(target_batch)])
+    source_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+    target_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
 
-    # source_batch = scale_image(source_batch,source_batch_min,source_batch_max)
-    # target_batch = scale_image(target_batch,target_batch_min,target_batch_max)
-
-    source_batch = scale_image(source_batch,IMIN,IMAX)
-    target_batch = scale_image(target_batch,IMIN,IMAX)
+    source_batch = scale_image(source_batch,source_batch_min,source_batch_max)
+    target_batch = scale_image(target_batch,target_batch_min,target_batch_max)
 
     smooth_sigma = np.sqrt(parser['pyramid_spacing']) / np.sqrt(3)
-
     kx = cv2.getGaussianKernel(int(2 * round(1.5 * smooth_sigma)) + 1, smooth_sigma)
     ky = cv2.getGaussianKernel(int(2 * round(1.5 * smooth_sigma)) + 1, smooth_sigma)
     hg = np.multiply(kx, np.transpose(ky))
 
-    source_batch = source_batch.transpose(0,2,3,1)
-    target_batch = target_batch.transpose(0,2,3,1)
+    # pyramid_images_list = compute_pyramid(source_batch,hg, int(parser['pyramid_levels']),
+    #                                       1 / parser['pyramid_spacing'])
+    # target_pyramid_images_list = compute_pyramid(target_batch,hg, int(parser['pyramid_levels']),
+    #                                              1 / parser['pyramid_spacing'])
 
-    pyramid_images_list = compute_pyramid(source_batch,hg, int(parser['pyramid_levels']),
+    pyramid_images_list = compute_pyramid_pytorch(source_batch,scaleTnf,hg, int(parser['pyramid_levels']),
                                           1 / parser['pyramid_spacing'])
-    target_pyramid_images_list = compute_pyramid(target_batch,hg, int(parser['pyramid_levels']),
+
+    target_pyramid_images_list = compute_pyramid_pytorch(target_batch,scaleTnf,hg, int(parser['pyramid_levels']),
                                                  1 / parser['pyramid_spacing'])
 
 
@@ -76,8 +72,10 @@ def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
 
         copy = {}
         copy['parser'] = parser
-        copy['source_images'] = torch.from_numpy(pyramid_images_list[k]).float()
-        copy['target_images'] = torch.from_numpy(target_pyramid_images_list[k]).float()
+        # copy['source_images'] = torch.from_numpy(pyramid_images_list[k]).float()
+        # copy['target_images'] = torch.from_numpy(target_pyramid_images_list[k]).float()
+        copy['source_images'] = pyramid_images_list[k]
+        copy['target_images'] = target_pyramid_images_list[k]
 
         if use_cuda:
             copy['source_images'] = copy['source_images'].cuda()

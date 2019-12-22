@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from skimage import io
 import matplotlib.pyplot as plt
 import numpy as np
+import torch.nn.functional as F
 
 from datasets.provider.randomTnsData import RandomTnsPair
 from datasets.provider.singlechannelData import SingleChannelPairTnf
@@ -53,20 +54,13 @@ if __name__ == '__main__':
     img2 = (img2.astype(np.float32) / 255 - 0.456) / 0.224
     img3 = (img3.astype(np.float32) / 255 - 0.456) / 0.224
 
-    # img1 = torch.Tensor(img1).transpose(1,2).transpose(0,1)
-    # img2 = torch.Tensor(img2).transpose(1,2).transpose(0,1)
-    #
-    # img1 = img1/255.0
-    # img2 = img2/255.0
 
     source_batch = np.stack((img1,img1),0)
     target_batch = np.stack((img2,img3),0)
 
-    # source_batch = torch.from_numpy(img1[np.newaxis, :])
-    # target_batch = torch.from_numpy(img2[np.newaxis, :])
+    source_batch = torch.from_numpy(source_batch)
+    target_batch = torch.from_numpy(target_batch)
 
-    # source_batch = torch.cat((source_batch,source_batch),0)
-    # target_batch = torch.cat((target_batch,target_batch),0)
 
 
     p = estimate_aff_param_iterator(source_batch, target_batch, use_cuda=use_cuda)
