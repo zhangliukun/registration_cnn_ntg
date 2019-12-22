@@ -17,6 +17,7 @@ def affine_transform(im,p):
     return im
 
 def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
+
     parser = {}
     parser['tol'] = 1e-6
     parser['itermax'] = 500
@@ -25,13 +26,25 @@ def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
     parser['initial_affine_param'] = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
     parser['pyramid_levels'] = 8
 
-    IMAX = np.max([np.max(source_batch), np.max(target_batch)])
-    IMIN = np.min([np.min(source_batch), np.min(target_batch)])
-
-    source_batch = scale_image(source_batch, IMIN, IMAX)
-    target_batch = scale_image(target_batch, IMIN, IMAX)
-
     batch_size = source_batch.shape[0]
+
+    # source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+    # target_batch_max = torch.max(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+    #
+    # source_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+    # target_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+
+    # IMAX = np.max([np.max(source_batch.numpy()),np.max(target_batch.numpy())])
+    # IMIN = np.min([np.min(source_batch.numpy()),np.min(target_batch.numpy())])
+
+    IMAX = np.max([np.max(source_batch),np.max(target_batch)])
+    IMIN = np.min([np.min(source_batch),np.min(target_batch)])
+
+    # source_batch = scale_image(source_batch,source_batch_min,source_batch_max)
+    # target_batch = scale_image(target_batch,target_batch_min,target_batch_max)
+
+    source_batch = scale_image(source_batch,IMIN,IMAX)
+    target_batch = scale_image(target_batch,IMIN,IMAX)
 
     smooth_sigma = np.sqrt(parser['pyramid_spacing']) / np.sqrt(3)
 
@@ -39,10 +52,14 @@ def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
     ky = cv2.getGaussianKernel(int(2 * round(1.5 * smooth_sigma)) + 1, smooth_sigma)
     hg = np.multiply(kx, np.transpose(ky))
 
-    pyramid_images_list = compute_pyramid(source_batch, hg, int(parser['pyramid_levels']),
+    source_batch = source_batch.transpose(0,2,3,1)
+    target_batch = target_batch.transpose(0,2,3,1)
+
+    pyramid_images_list = compute_pyramid(source_batch,hg, int(parser['pyramid_levels']),
                                           1 / parser['pyramid_spacing'])
-    target_pyramid_images_list = compute_pyramid(target_batch, hg, int(parser['pyramid_levels']),
+    target_pyramid_images_list = compute_pyramid(target_batch,hg, int(parser['pyramid_levels']),
                                                  1 / parser['pyramid_spacing'])
+
 
     for k in range(parser['pyramid_levels'] - 1, -1, -1):
         if k == (parser['pyramid_levels'] - 1):

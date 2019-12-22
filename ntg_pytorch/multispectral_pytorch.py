@@ -14,21 +14,44 @@ from tnf_transform.img_process import NormalizeImageDict
 
 
 if __name__ == '__main__':
+
     use_cuda = False
+    # test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
+    # label_path = 'datasets/row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
+    #
+    # dataset = TestDataset(test_image_path,label_path,transform=NormalizeImageDict(["image"]))
+    # dataloader = DataLoader(dataset,batch_size=1,shuffle=False,num_workers=4,pin_memory=True)
+    # pair_generator = RandomTnsPair(use_cuda=use_cuda,output_size=(480, 640))
+
+    # for batch_idx,batch in enumerate(dataloader):
+    #     if batch_idx % 5 == 0:
+    #         print('test batch: [{}/{} ({:.0f}%)]'.format(
+    #             batch_idx, len(dataloader),
+    #             100. * batch_idx / len(dataloader)))
+    #
+    #     pair_batch = pair_generator(batch)
+    #     source_image_batch = pair_batch['source_image']
+    #     target_image_batch = pair_batch['target_image']
+    #     theta_GT_batch = pair_batch['theta_GT']
+    #
+    #     p = estimate_aff_param_iterator(source_image_batch,target_image_batch,use_cuda=use_cuda)
+    #
+    #     print(p)
 
     img1 = io.imread('datasets/row_data/multispectral/Ir.jpg')
     img2 = io.imread('datasets/row_data/multispectral/Itrot2.jpg')
+    img3 = io.imread('datasets/row_data/multispectral/It.jpg')
 
-    # plt.imshow(img1)
-    # plt.figure()
-    # plt.imshow(img2)
-    # plt.show()
+    # img1 = img1[:, :, 0][ np.newaxis,:, :]
+    # img2 = img2[:, :, 0][ np.newaxis,:, :]
 
-    img1 = img1[:, :, 0][:, :, np.newaxis]
-    img2 = img2[:, :, 0][:, :, np.newaxis]
+    img1 = img1[:, :, 0][np.newaxis,:,:]
+    img2 = img2[:, :, 0][np.newaxis,:,:]
+    img3 = img3[:, :, 0][np.newaxis,:,:]
 
     img1 = (img1.astype(np.float32) / 255 - 0.485) / 0.229
     img2 = (img2.astype(np.float32) / 255 - 0.456) / 0.224
+    img3 = (img3.astype(np.float32) / 255 - 0.456) / 0.224
 
     # img1 = torch.Tensor(img1).transpose(1,2).transpose(0,1)
     # img2 = torch.Tensor(img2).transpose(1,2).transpose(0,1)
@@ -36,27 +59,26 @@ if __name__ == '__main__':
     # img1 = img1/255.0
     # img2 = img2/255.0
 
-    # source_batch = np.stack((img1,img1),0)
-    # target_batch = np.stack((img2,img2),0)
+    source_batch = np.stack((img1,img1),0)
+    target_batch = np.stack((img2,img3),0)
 
-    source_batch = img1[np.newaxis, :]
-    target_batch = img2[np.newaxis, :]
+    # source_batch = torch.from_numpy(img1[np.newaxis, :])
+    # target_batch = torch.from_numpy(img2[np.newaxis, :])
+
+    # source_batch = torch.cat((source_batch,source_batch),0)
+    # target_batch = torch.cat((target_batch,target_batch),0)
+
 
     p = estimate_aff_param_iterator(source_batch, target_batch, use_cuda=use_cuda)
-
     print(p)
 
-    img1 = img1[:, :, 0]
-    img2 = img2[:, :, 0]
+    img1 = img1[0,:, :]
+    img2 = img2[0,:, :]
+    img3 = img3[0,:, :]
 
-    im2warped = affine_transform(img2, p[0].numpy())
 
-    [f1x, f1y] = np.gradient(img1)
-    [f2x, f2y] = np.gradient(img2)
-    [f3x, f3y] = np.gradient(im2warped)
-    g1 = np.sqrt(f1x * f1x + f1y * f1y)
-    g2 = np.sqrt(f2x * f2x + f2y * f2y)
-    g3 = np.sqrt(f3x * f3x + f3y * f3y)
+    im2warped = affine_transform(img2,p[0].numpy())
+    im3warped = affine_transform(img3,p[1].numpy())
 
     plt.imshow(img1, cmap='gray')  # 目标图片
     plt.figure()
@@ -64,7 +86,5 @@ if __name__ == '__main__':
     plt.figure()
     plt.imshow(im2warped, cmap='gray')
     plt.figure()
-    plt.imshow(g1, cmap='gray')
-    plt.figure()
-    plt.imshow(g2, cmap='gray')
+    plt.imshow(im3warped, cmap='gray')
     plt.show()

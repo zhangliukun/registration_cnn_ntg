@@ -34,18 +34,18 @@ def ntg_gradient_torch(objdict,p,use_cuda = False):
 
     w = wxx + wyy
 
-    w = w.squeeze()
-    g = torch.zeros((6, 1))
+    # w = w.squeeze()
+    g = torch.zeros((p.shape[0],6, 1))
     if use_cuda:
         g = g.cuda()
-    g[0] = torch.mean(w * objdict['X_array'] * Ipx)
-    g[1] = torch.mean(w * objdict['Y_array'] * Ipx)
-    g[2] = torch.mean(w * Ipx)
-    g[3] = torch.mean(w * objdict['X_array'] * Ipy)
-    g[4] = torch.mean(w * objdict['Y_array'] * Ipy)
-    g[5] = torch.mean(w * Ipy)
+    g[:,0] = torch.mean(w * objdict['X_array'] * Ipx,(2,3))
+    g[:,1] = torch.mean(w * objdict['Y_array'] * Ipx,(2,3))
+    g[:,2] = torch.mean(w * Ipx,(2,3))
+    g[:,3] = torch.mean(w * objdict['X_array'] * Ipy,(2,3))
+    g[:,4] = torch.mean(w * objdict['Y_array'] * Ipy,(2,3))
+    g[:,5] = torch.mean(w * Ipy,(2,3))
 
-    g = g.reshape(2, 3)
+    g = g.reshape(-1, 2, 3)
 
     return g
 
