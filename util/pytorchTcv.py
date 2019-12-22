@@ -3,7 +3,7 @@ import torch
 
 
 # 将opencv的变换参数转换为pytorch的变换参数
-def param2theta(param, w, h,use_cuda=True):
+def param2theta(param, h, w,use_cuda=True):
     '''
     :param param: [batch,2,3]
     :param w:
