@@ -18,9 +18,21 @@ def ntg_gradient_torch(objdict,p,use_cuda = False):
     p_pytorch = param2theta(p, source_image_batch.shape[2], source_image_batch.shape[3], use_cuda=use_cuda)
     warpI = affine_transform_pytorch(source_image_batch, p_pytorch)
 
-    Ipx, Ipy = deriv_filt_pytorch(warpI, False, use_cuda)
+    batch, c, h, w = source_image_batch.shape
+    x = objdict['W_array']
+    y = objdict['H_array']
+    x2 = p[:, 0, 0].reshape(batch,c,1,1) * x + p[:, 0, 1].reshape(batch,c,1,1) * y + p[:, 0, 2].reshape(batch,c,1,1)
+    y2 = p[:, 1, 0].reshape(batch,c,1,1) * x + p[:, 1, 1].reshape(batch,c,1,1) * y + p[:, 1, 2].reshape(batch,c,1,1)
 
+    B = (x2 > w - 1) | (x2 < 0) | (y2 > h - 1) | (y2 < 0)
+
+    Ipx, Ipy = deriv_filt_pytorch(warpI, False, use_cuda)
     It = warpI - target_image_batch
+
+    Ipx[B] = 0
+    Ipy[B] = 0
+    It[B] = 0
+
 
     J = compute_ntg_pytorch(target_image_batch, warpI, use_cuda)
 
@@ -83,9 +95,9 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
     # weight_x = nn.Parameter(data=kernel_x, requires_grad=False)
     # weight_y = nn.Parameter(data=kernel_y, requires_grad=False)
 
-    # if use_cuda:
-    #     weight_x = weight_x.cuda()
-    #     weight_y = weight_y.cuda()
+    if use_cuda:
+        kernel_x = kernel_x.cuda()
+        kernel_y = kernel_y.cuda()
 
     ## 注意，这里面的Ix和Iy和cv2的filter不一样
     Ix = F.conv2d(I,kernel_x,padding=1)[:,:,1:-1,:]
