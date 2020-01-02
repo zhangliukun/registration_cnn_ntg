@@ -58,35 +58,37 @@ def write_csv(output_path,datadicts):
         # writer.writerow(datadict)
         writer.writerows(datadicts)
 
-def test_affine_image():
-    image_name_list = read_row_data(row_data_dir_path)
-    for i in range(len(image_name_list)):
+# def test_affine_image():
+#     image_name_list = read_row_data(row_data_dir_path)
+#     for i in range(len(image_name_list)):
+#
+#         img_row = cv2.imread(row_data_dir_path+image_name_list[i])
+#         random_param = generator_affine_param()
+#         img_aff = affine_transform(img_row,random_param)
+#
+#         result = np.hstack([img_row,img_aff])
+#
+#         cv2.imshow('compare',result)
+#         cv2.waitKey(0)
 
-        img_row = cv2.imread(row_data_dir_path+image_name_list[i])
-        random_param = generator_affine_param()
-        img_aff = affine_transform(img_row,random_param)
-
-        result = np.hstack([img_row,img_aff])
-
-        cv2.imshow('compare',result)
-        cv2.waitKey(0)
-
-#test_affine_image()
-init_seeds(seed= 23442)
+init_seeds(seed= 46763)
 #row_data_dir_path = '/home/zlk/datasets/coco_test2017'
-#row_data_dir_path = '../row_data/COCO'
-#row_data_dir_path = '/home/zlk/datasets/coco_test2017_n2000'
-row_data_dir_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/nir_image'
+row_data_dir_path = '../row_data/COCO/'
+# row_data_dir_path = '/home/zlk/datasets/coco_test2017_n2000'
+# row_data_dir_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/nir_image'
 
-use_custom_random_aff = True
+test_affine_image()
+
+use_custom_random_aff = False
 
 if use_custom_random_aff:
-    output_path = '../row_data/label_file/coco_test2017_custom_param.csv'
-    output_path = '../row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
+    # output_path = '../row_data/label_file/coco_test2017_custom_param.csv'
+    # output_path = '../row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
     output_path = '../row_data/label_file/nir_rgb_custom_20r_param.csv'
 else:
-    output_path = '../row_data/label_file/coco_test2017_paper_param.csv'
+    output_path = '../row_data/label_file/coco_test2017_paper_param_n2000.csv'
+    # output_path = '../row_data/label_file/nir_rgb_paper_affine_param.csv'
 
-generate_result_dict(row_data_dir_path,output_path,use_custom_random_aff=use_custom_random_aff)
+#generate_result_dict(row_data_dir_path,output_path,use_custom_random_aff=use_custom_random_aff)
 
 #print(random_affine(to_dict= True))
