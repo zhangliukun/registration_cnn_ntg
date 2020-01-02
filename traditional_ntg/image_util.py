@@ -12,7 +12,7 @@ def scale_image(img,IMIN,IMAX):
     return (img-IMIN)/(IMAX-IMIN)
 
 
-def symmetricImagePad(image_batch,padding_factor,use_cuda = True):
+def symmetricImagePad(image_batch,padding_factor=0.6,use_cuda = False):
     '''
     使用边缘镜像对称来扩充图像，先左右，后上下，选取边缘然后cat拼接
     :param image_batch: 批图像

@@ -44,16 +44,16 @@ if __name__ == '__main__':
 
     # img1 = io.imread('datasets/row_data/multispectral/Ir.jpg')
     # img3 = io.imread('datasets/row_data/multispectral/Itrot2.jpg')
-    # img2 = io.imread('datasets/row_data/multispectral/Itrot3.jpg')                  e
+    # img2 = io.imread('datasets/row_data/multispectral/Itrot3.jpg')
 
-    img1 = io.imread('datasets/row_data/multispectral/source_1.jpeg')
-    img2 = io.imread('datasets/row_data/multispectral/source_2.jpeg')
-    img3 = io.imread('datasets/row_data/multispectral/source_3.jpeg')
+    img1 = io.imread('datasets/row_data/multispectral/000000001439_t.jpg')
+    img2 = io.imread('datasets/row_data/multispectral/000000001439_s.jpg')
+    img3 = io.imread('datasets/row_data/multispectral/000000001439_s.jpg')
 
     # img1 = img1[:, :, 0][ np.newaxis,:, :]
     # img2 = img2[:, :, 0][ np.newaxis,:, :]
 
-    img1 = img1[:, :, 0][np.newaxis,:,:]
+    img1 = img1[:, :, 2][np.newaxis,:,:]
     img2 = img2[:, :, 0][np.newaxis,:,:]
     img3 = img3[:, :, 0][np.newaxis,:,:]
 
@@ -66,11 +66,14 @@ if __name__ == '__main__':
     img3 = img3.astype(np.float32) / 255
 
 
-    source_batch = np.stack((img1,img1),0)
-    target_batch = np.stack((img2,img3),0)
+    source_batch = np.stack((img2,img3),0)
+    target_batch = np.stack((img1,img1),0)
 
     source_batch = torch.from_numpy(source_batch)
     target_batch = torch.from_numpy(target_batch)
+
+    # source_batch = source_batch.index_select(0,torch.tensor([0]))
+    # target_batch = target_batch.index_select(0,torch.tensor([0]))
 
 
 
@@ -90,12 +93,12 @@ if __name__ == '__main__':
     # vis.showImage(torch.from_numpy(im3warped),win='im3',title='im3wrap')
 
     plt.imshow(img1, cmap='gray')  # 目标图片
-    # plt.figure()
-    # plt.imshow(img2, cmap='gray')  # 待变换图片
-    # plt.figure()
-    # plt.imshow(img3, cmap='gray')  # 待变换图片
-    # plt.figure()
-    # plt.imshow(im2warped, cmap='gray')
+    plt.figure()
+    plt.imshow(img2, cmap='gray')  # 待变换图片
+    plt.figure()
+    plt.imshow(img3, cmap='gray')  # 待变换图片
+    plt.figure()
+    plt.imshow(im2warped, cmap='gray')
     plt.figure()
     plt.imshow(im3warped, cmap='gray')
     plt.show()

@@ -15,6 +15,8 @@ from visualization.train_visual import VisdomHelper
 
 if __name__ == '__main__':
 
+    print('使用传统NTG批量测试')
+
     use_cuda = torch.cuda.is_available()
 
     env = "ntg_pytorch"
@@ -24,7 +26,8 @@ if __name__ == '__main__':
 
     dataset = TestDataset(test_image_path,label_path,transform=NormalizeImageDict(["image"]))
     dataloader = DataLoader(dataset,batch_size=8,shuffle=False,num_workers=4,pin_memory=True)
-    pair_generator = NtgTestPair(use_cuda=use_cuda,output_size=(480, 640))
+    #pair_generator = NtgTestPair(use_cuda=use_cuda,output_size=(480, 640))
+    pair_generator = NtgTestPair(use_cuda=use_cuda)
 
     for batch_idx,batch in enumerate(dataloader):
         if batch_idx % 5 == 0:
@@ -38,15 +41,19 @@ if __name__ == '__main__':
         source_image_batch = pair_batch['source_image']
         target_image_batch = pair_batch['target_image']
         theta_GT_batch = pair_batch['theta_GT']
+        image_name = pair_batch['name']
 
         if use_cuda:
             source_image_batch = source_image_batch.cuda()
             target_image_batch = target_image_batch.cuda()
 
-        param_batch = estimate_aff_param_iterator(source_image_batch,target_image_batch,use_cuda=use_cuda)
+        with torch.no_grad():
+            param_batch = estimate_aff_param_iterator(source_image_batch,target_image_batch,use_cuda=use_cuda)
 
         ntg_image_warped_batch = affine_transform_opencv(source_image_batch, param_batch.cpu())
 
-        vis.drawImage(source_image_batch.cpu().detach(),ntg_image_warped_batch.cpu().detach(),target_image_batch.cpu().detach(),single_channel=True)
+        vis.drawImage(source_image_batch.cpu().detach(),
+                      ntg_image_warped_batch.cpu().detach(),target_image_batch.cpu().detach(),single_channel=True)
 
-        #print(p)
+        print(image_name)
+        print(param_batch.cpu().detach())

@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from ntg_pytorch.register_loss import ntg_gradient_torch
-from ntg_pytorch.register_pyramid import compute_pyramid, compute_pyramid_pytorch, ScaleTnf
+from ntg_pytorch.register_pyramid import compute_pyramid, compute_pyramid_pytorch, ScaleTnf, compute_pyramid_while
 from util.time_util import calculate_diff_time
 import matplotlib.pyplot as plt
 
@@ -20,40 +20,49 @@ def affine_transform(im,p):
     im = cv2.warpAffine(im,p,(width,height))
     return im
 
-def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
+def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=None,use_cuda=False,itermax = 800):
+
+    batch_size = source_batch.shape[0]
 
     parser = {}
     parser['tol'] = 1e-6
-    parser['itermax'] = 600
+    parser['itermax'] = itermax
     parser['pyramid_spacing'] = 1.5
     parser['minSize'] = 16
-    parser['initial_affine_param'] = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
 
-    start_time = time.time()
+    if theta_opencv_batch is None:
+        p = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        p = np.tile(p, (batch_size, 1, 1)).astype(np.float32)
+        p = torch.from_numpy(p)
+        parser['initial_affine_param'] = p
+    else:
+        parser['initial_affine_param'] = theta_opencv_batch.clone()
+
+    # start_time = time.time()
 
     pyramid_level1 = 1 + np.floor(np.log(source_batch.shape[2] / parser['minSize']) / np.log(parser['pyramid_spacing']))
     pyramid_level2 = 1 + np.floor(np.log(source_batch.shape[3] / parser['minSize']) / np.log(parser['pyramid_spacing']))
     parser['pyramid_levels'] = np.min((int(pyramid_level1),int(pyramid_level2)))
-    # parser['pyramid_levels'] = 3
-
-    batch_size = source_batch.shape[0]
-
+    if theta_opencv_batch is not None:
+        parser['pyramid_levels'] = parser['pyramid_levels'] -2
+    # parser['pyramid_levels'] = 1
 
     source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
     target_batch_max = torch.max(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
 
+    IMAX_index = target_batch_max > source_batch_max
+    source_batch_max[IMAX_index] = target_batch_max[IMAX_index]
+    IMAX = source_batch_max
+
     source_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
-    target_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+    target_batch_min = torch.min(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
 
-    source_batch = scale_image(source_batch,source_batch_min,source_batch_max)
-    target_batch = scale_image(target_batch,target_batch_min,target_batch_max)
+    IMIN_index = target_batch_min < source_batch_min
+    source_batch_min[IMIN_index] = target_batch_min[IMIN_index]
+    IMIN = source_batch_min
 
-    # IMAX = np.max([torch.max(source_batch), torch.max(target_batch)])
-    # IMIN = np.min([torch.min(source_batch), torch.min(target_batch)])
-    #
-    # source_batch = scale_image(source_batch, IMIN, IMAX)
-    # target_batch = scale_image(target_batch, IMIN, IMAX)
-
+    source_batch = scale_image(source_batch,IMIN,IMAX)
+    target_batch = scale_image(target_batch,IMIN,IMAX)
 
     batch_size,channel, h, w = source_batch.shape
 
@@ -65,30 +74,42 @@ def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
     # print("配置时间",calculate_diff_time(start_time))
     # start_time = time.time()
 
-    #scaleTnf = ScaleTnf(use_cuda=use_cuda)
+    scaleTnf = ScaleTnf(use_cuda=use_cuda)
 
-    # pyramid_images_list = compute_pyramid_pytorch(source_batch,scaleTnf,hg, int(parser['pyramid_levels']),
-    #                                       1 / parser['pyramid_spacing'])
+    pyramid_images_list = compute_pyramid_pytorch(source_batch,scaleTnf,hg, int(parser['pyramid_levels']),
+                                          1 / parser['pyramid_spacing'],use_cuda = use_cuda)
+
+    target_pyramid_images_list = compute_pyramid_pytorch(target_batch,scaleTnf,hg, int(parser['pyramid_levels']),
+                                                 1 / parser['pyramid_spacing'],use_cuda = use_cuda)
+
     #
-    # target_pyramid_images_list = compute_pyramid_pytorch(target_batch,scaleTnf,hg, int(parser['pyramid_levels']),
-    #                                              1 / parser['pyramid_spacing'])
+    # pyramid_images_list = compute_pyramid(source_batch,hg, int(parser['pyramid_levels']),
+    #                                       1 / parser['pyramid_spacing'],use_cuda=use_cuda)
+    #
+    # target_pyramid_images_list = compute_pyramid(target_batch,hg, int(parser['pyramid_levels']),
+    #                                              1 / parser['pyramid_spacing'],use_cuda=use_cuda)
 
-    pyramid_images_list = compute_pyramid(source_batch,hg, int(parser['pyramid_levels']),
-                                          1 / parser['pyramid_spacing'])
-
-    target_pyramid_images_list = compute_pyramid(target_batch,hg, int(parser['pyramid_levels']),
-                                                 1 / parser['pyramid_spacing'])
+    # pyramid_images_list = compute_pyramid_while(source_batch,hg, int(parser['pyramid_levels']),
+    #                                       1 / parser['pyramid_spacing'],use_cuda=use_cuda)
+    #
+    # target_pyramid_images_list = compute_pyramid_while(target_batch,hg, int(parser['pyramid_levels']),
+    #                                              1 / parser['pyramid_spacing'],use_cuda=use_cuda)
 
     # plt.show()
 
     # print("pytorch金字塔",calculate_diff_time(start_time))
     # start_time = time.time()
 
+    # 这里因为传入的变换参数是从CNN中获得的，大小为240*240，所以传入进来使用的话需要进行缩放，使用最小层除以最大层得到缩放比例，
+    # 然后就得到CNN变换比例得到的最小层相应的大小了。
+    if theta_opencv_batch is not None:
+        ration_diff = pyramid_images_list[-1].shape[-1] / pyramid_images_list[0].shape[-1]
+        parser['initial_affine_param'][:,0, 2] = parser['initial_affine_param'][:,0, 2]*ration_diff
+        parser['initial_affine_param'][:,1, 2] = parser['initial_affine_param'][:,1, 2]*ration_diff
+
     for k in range(parser['pyramid_levels'] - 1, -1, -1):
         if k == (parser['pyramid_levels'] - 1):
             p = parser['initial_affine_param']
-            p = np.tile(p, (batch_size, 1, 1)).astype(np.float32)
-            p = torch.from_numpy(p)
             if use_cuda:
                 p = p.cuda()
 
@@ -133,21 +154,23 @@ def estimate_aff_param_iterator(source_batch,target_batch,use_cuda=False):
 
         while not converged:
             start_time = time.time()
-            g = ntg_gradient_torch(copy, p, use_cuda=use_cuda)
+            g = ntg_gradient_torch(copy, p, use_cuda=use_cuda).detach()
             # print("ntg_gradient_torch", calculate_diff_time(start_time))
             if p is None:
                 print("p is None")
-            p = p + steplength * g / torch.max(torch.abs(g).view(g.shape[0],-1),1)[0].unsqueeze(1).unsqueeze(1)
+            p = p + steplength * g / torch.max(torch.abs(g+1e-16).view(g.shape[0],-1),1)[0].unsqueeze(1).unsqueeze(1)
             #residualError = torch.max(torch.abs(g[0]))
             residualError = torch.max(torch.abs(g).view(g.shape[0],-1),1)[0]
             iter = iter + 1
             #converged = (iter >= parser['itermax']) or (residualError < parser['tol'])
             converged = iter >= parser['itermax']
             # print(converged)
-            if converged:
-                print(str(k) + " " + str(iter) + " " + str(residualError))
+            # if converged:
+            #     print(str(k) + " " + str(iter) + " " + str(residualError[0:8]))
+                #print(str(k) + " " + str(iter))
+                #torch.cuda.empty_cache()
 
-    print("循环结束时间：",calculate_diff_time(start_time))
+    #print("循环结束时间：",calculate_diff_time(start_time))
 
     return p
 

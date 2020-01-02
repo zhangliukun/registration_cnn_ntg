@@ -5,15 +5,14 @@ import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import torch.nn as nn
 
-from evluate.lossfunc import func_rho_torch
 from tnf_transform.transformation import affine_transform_pytorch
 from util.pytorchTcv import param2theta
 
 
 def ntg_gradient_torch(objdict,p,use_cuda = False):
     options = objdict['parser']
-    target_image_batch = objdict['source_images']
-    source_image_batch = objdict['target_images']
+    source_image_batch = objdict['source_images']
+    target_image_batch = objdict['target_images']
 
     p_pytorch = param2theta(p, source_image_batch.shape[2], source_image_batch.shape[3], use_cuda=use_cuda)
     warpI = affine_transform_pytorch(source_image_batch, p_pytorch)
@@ -33,16 +32,33 @@ def ntg_gradient_torch(objdict,p,use_cuda = False):
     Ipy[B] = 0
     It[B] = 0
 
+    # plt.figure()
+    # plt.imshow(warpI[0].squeeze(), cmap=plt.cm.gray_r)
+    # plt.figure()
+    # plt.imshow(It[0].squeeze(), cmap=plt.cm.gray_r)
+    # plt.figure()
+    # plt.imshow(Ipx[0].squeeze(), cmap=plt.cm.gray_r)
+    # plt.figure()
+    # plt.imshow(Ipy[0].squeeze(), cmap=plt.cm.gray_r)
+    # plt.show()
 
     J = compute_ntg_pytorch(target_image_batch, warpI, use_cuda)
 
     [Itx, Ity] = deriv_filt_pytorch(It, False, use_cuda)
 
-    rho_x = func_rho_pytorch(Itx, 1) - J * func_rho_pytorch(Ipx, 1)
-    rho_y = func_rho_pytorch(Ity, 1) - J * func_rho_pytorch(Ipy, 1)
+    rho_x = func_rho_pytorch(Itx, 1,use_cuda= use_cuda) - J.reshape(batch,1,1,1) * func_rho_pytorch(Ipx, 1,use_cuda= use_cuda)
+    rho_y = func_rho_pytorch(Ity, 1,use_cuda= use_cuda) - J.reshape(batch,1,1,1) * func_rho_pytorch(Ipy, 1,use_cuda= use_cuda)
 
     [wxx, wxy] = deriv_filt_pytorch(rho_x, True, use_cuda)
     [wyx, wyy] = deriv_filt_pytorch(rho_y, True, use_cuda)
+
+    # plt.figure()
+    # plt.imshow(wxx[0].squeeze(), cmap=plt.cm.gray_r)
+    #
+    # plt.figure()
+    # plt.imshow(wyy[0].squeeze(), cmap=plt.cm.gray_r)
+    #
+    # plt.show()
 
     w = wxx + wyy
 
@@ -68,9 +84,9 @@ def compute_ntg_pytorch(img1,img2,use_cuda=False):
     # g1xy = torch.sqrt(torch.pow(g1x,2)+torch.pow(g1y,2))
     # g2xy = torch.sqrt(torch.pow(g2x,2)+torch.pow(g2y,2))
 
-    m1 = func_rho_torch(g1x - g2x, 0,use_cuda= use_cuda) + func_rho_torch(g1y - g2y, 0,use_cuda= use_cuda)
-    n1 = func_rho_torch(g1x, 0,use_cuda= use_cuda) + func_rho_torch(g2x, 0,use_cuda= use_cuda) + \
-         func_rho_torch(g1y, 0,use_cuda= use_cuda) + func_rho_torch(g2y, 0,use_cuda= use_cuda)
+    m1 = func_rho_pytorch(g1x - g2x, 0,use_cuda= use_cuda) + func_rho_pytorch(g1y - g2y, 0,use_cuda= use_cuda)
+    n1 = func_rho_pytorch(g1x, 0,use_cuda= use_cuda) + func_rho_pytorch(g2x, 0,use_cuda= use_cuda) + \
+         func_rho_pytorch(g1y, 0,use_cuda= use_cuda) + func_rho_pytorch(g2y, 0,use_cuda= use_cuda)
     y1 = m1 / (n1 + 1e-16)
 
     #print(y1)
@@ -83,35 +99,51 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
     :return:
     '''
     if not isconj:
-        kernel_x = [[-0.5, 0, 0.5]]
-        kernel_y = [[-0.5], [0], [0.5]]
+        kernel_x = [[-0.5,0,0.5]]
+        kernel_y = [[-0.5],[0],[0.5]]
     else:
-        kernel_x = [[0.5, 0, -0.5]]
-        kernel_y = [[0.5], [0], [-0.5]]
+        kernel_x = [[0.5,0,-0.5]]
+        kernel_y = [[0.5],[0],[-0.5]]
 
     kernel_x = torch.Tensor(kernel_x).unsqueeze(0).unsqueeze(0)
     kernel_y = torch.Tensor(kernel_y).unsqueeze(0).unsqueeze(0)
-
-    # weight_x = nn.Parameter(data=kernel_x, requires_grad=False)
-    # weight_y = nn.Parameter(data=kernel_y, requires_grad=False)
 
     if use_cuda:
         kernel_x = kernel_x.cuda()
         kernel_y = kernel_y.cuda()
 
     ## 注意，这里面的Ix和Iy和cv2的filter不一样
-    Ix = F.conv2d(I,kernel_x,padding=1)[:,:,1:-1,:]
-    Iy = F.conv2d(I,kernel_y,padding=1)[:,:,:,1:-1]
+    # Ix = F.conv2d(I,kernel_x,padding=1)[:,:,1:-1,:] # 上下为0
+    # Iy = F.conv2d(I,kernel_y,padding=1)[:,:,:,1:-1] # 左右为0
+
+    # I = F.pad(I,(1,1,1,1),mode='reflect')
+    # Ix = F.conv2d(I,kernel_x,padding=0)[:,:,1:-1,:] # 上下为0
+    # Iy = F.conv2d(I,kernel_y,padding=0)[:,:,:,1:-1] # 左右为0
+
+
+    ## 注意！不同的mode导致的结果也不一样
+
+    Ix = F.conv2d(I,kernel_x,padding=0) # 上下为0
+    Iy = F.conv2d(I,kernel_y,padding=0) # 左右为0
+
+    Ix = F.pad(Ix,(1,1,0,0),mode='reflect')
+    Iy = F.pad(Iy,(0,0,1,1),mode='reflect')
+
+    # Ix = F.pad(Ix,(1,1,0,0),mode='circular')
+    # Iy = F.pad(Iy,(0,0,1,1),mode='circular')
 
     return Ix,Iy
 
 
-def func_rho_pytorch(x,order,epsilon=0.01):
-    if order == 0:
-        y = torch.sqrt(x*x + epsilon*epsilon)
-        y = torch.sum(y)
-    elif order == 1:
-        y = x/torch.sqrt(x*x + epsilon*epsilon)
+def func_rho_pytorch(x,order,epsilon=0.01,use_cuda=False):
+    if use_cuda:
+        epsilon = torch.Tensor([epsilon]).float().cuda()
     else:
-        print("Tag | wrong order")
+        epsilon = torch.Tensor([epsilon]).float()
+    if order == 0:
+        y = torch.sqrt(torch.pow(x, 2) + torch.pow(epsilon, 2))
+        y = torch.sum(y.reshape(x.shape[0], -1), 1)
+    elif order == 1:
+        y = x / torch.sqrt(torch.pow(x, 2) + torch.pow(epsilon, 2))
+
     return y

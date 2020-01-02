@@ -42,12 +42,18 @@ def estimate_param_batch(source_image_batch,target_image_batch,theta_opencv_batc
 # img1是target_image, img2是source_image
 def estimate_affine_param(img1,img2,p=None,itermax = 300):
     '''
-    :param img1: img1是target_image
+    :param img1: img1是target_image [h,w]
     :param img2: img2是source_image
     :param p: p为None则初始化为单位矩阵，不为None则继承运行
     :param itermax:
     :return: 返回opencv的参数
     '''
+
+    if len(img1.shape) == 3:
+        img1 = img1[0,:,:]
+
+    if len(img2.shape) == 3:
+        img2 = img2[0,:,:]
 
     options = {}
     options['tol'] = 1e-6
@@ -92,8 +98,10 @@ def estimate_affine_param(img1,img2,p=None,itermax = 300):
     elpased = calculate_diff_time(start_time)
     #print('计算图像金字塔时间:',elpased)
 
-    options['initial_affine_param'][0, 2] = options['initial_affine_param'][0, 2]/240 * pyramid_images[-1].shape[0]
-    options['initial_affine_param'][1, 2] = options['initial_affine_param'][1, 2]/240 * pyramid_images[-1].shape[0]
+    if p is not None:
+        # 注意，看一下这里是否正确进行缩放了
+        options['initial_affine_param'][0, 2] = options['initial_affine_param'][0, 2]/240 * pyramid_images[-1].shape[0]
+        options['initial_affine_param'][1, 2] = options['initial_affine_param'][1, 2]/240 * pyramid_images[-1].shape[0]
 
     start_time = time.time()
     for k in range(options['pyramid_levels']-1,-1,-1):
