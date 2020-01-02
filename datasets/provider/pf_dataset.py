@@ -43,8 +43,8 @@ class PFDataset(Dataset):
 
     def __getitem__(self, idx):
         # get pre-processed images
-        image_A,im_size_A = self.get_image(self.img_A_names,idx,single=True)
-        image_B,im_size_B = self.get_image(self.img_B_names,idx,single=True)
+        image_A,im_size_A = self.get_image(self.img_A_names,idx,single=False)
+        image_B,im_size_B = self.get_image(self.img_B_names,idx,single=False)
 
         # get pre-processed point coords
         point_A_coords = self.get_points(self.point_A_coords,idx)

@@ -10,7 +10,12 @@ class VisdomHelper:
         self.env_name = env_name
         self.vis = visdom.Visdom(env = self.env_name)
 
-    def drawImage(self, source_image_batch, warped_image_batch, target_image_batch):
+    def drawImage(self, source_image_batch, warped_image_batch, target_image_batch,single_channel = True,show_size=8):
+        if source_image_batch.shape[0] > show_size:
+            source_image_batch =source_image_batch[0:show_size]
+            warped_image_batch =warped_image_batch[0:show_size]
+            target_image_batch =target_image_batch[0:show_size]
+
         source_image_batch = normalize_image(source_image_batch,forward=False)
         warped_image_batch = normalize_image(warped_image_batch, forward=False)
         target_image_batch = normalize_image(target_image_batch, forward=False)
@@ -19,24 +24,27 @@ class VisdomHelper:
         warped_image_batch = torch.clamp(warped_image_batch,0,1)
         target_image_batch = torch.clamp(target_image_batch,0,1)
 
-        overlayImage = torch.cat((warped_image_batch, target_image_batch, warped_image_batch), 1)
+        if single_channel:
+            overlayImage = torch.cat((warped_image_batch, target_image_batch, warped_image_batch), 1)
+        else:
+            overlayImage = torch.cat((warped_image_batch[:,0:1,:,:],target_image_batch[:,1:2,:,:],warped_image_batch[:,0:1,:,:]),1)
 
         self.vis.images(
-            overlayImage[0:8], win="overlay",
+            overlayImage, win="overlay",
             opts=dict(title='overlay_image', caption='overlay.', width=1400, height=150, jpgquality=40)
         )
 
         self.vis.images(
-            source_image_batch[0:8], win="s1",
+            source_image_batch, win="s1",
             opts=dict(title='source_image_batch', caption='source.', width=1400, height=150, jpgquality=40)
         )
         self.vis.images(
-            warped_image_batch[0:8], win="s2",
+            warped_image_batch, win="s2",
             opts=dict(title='warped_image_batch', caption='warped.', width=1400, height=150, jpgquality=40)
         )
 
         self.vis.images(
-            target_image_batch[0:8], win="s3",
+            target_image_batch, win="s3",
             opts=dict(title='target_image_batch', caption='target.', width=1400, height=150, jpgquality=40)
         )
 
@@ -51,7 +59,20 @@ class VisdomHelper:
         self.vis.line(X=np.column_stack((epoch,epoch)), Y=np.column_stack((train_loss,test_loss)), win=win,
                  update='new' if epoch == 0 else 'append', opts=layout)
 
-    def show_cnn_result(self,source_image_batch, warped_image_batch, target_image_batch):
+    def drawGridlossGroup(self,X_list,ntg_list,Y_list_A,Y_list_B,Y_list_cvpr,
+                          layout_title,x_axis ='grid_loss',y_axis ='num',
+                          win='result',update='append'):
+        layout = dict(title=layout_title, xaxis={'title': x_axis}, yaxis={'title': y_axis},
+                      legend=['ntg_grid_loss','cnn_grid_loss','cnn_ntg_grid_loss','cvpr_2018_loss'],xlabel=X_list)
+        self.vis.line(X=np.column_stack((X_list, X_list, X_list,X_list)),
+                      Y=np.column_stack((ntg_list,Y_list_A, Y_list_B,Y_list_cvpr)),
+                      update=update,
+                      win=win,opts=layout)
+
+    def getVisdom(self):
+        return self.vis
+
+    def show_cnn_result(self,source_image_batch, warped_image_batch,fine_warped_image_batch, target_image_batch,single_channel = True):
         source_image_batch = normalize_image(source_image_batch, forward=False)
         warped_image_batch = normalize_image(warped_image_batch, forward=False)
         target_image_batch = normalize_image(target_image_batch, forward=False)
@@ -60,7 +81,11 @@ class VisdomHelper:
         warped_image_batch = torch.clamp(warped_image_batch, 0, 1)
         target_image_batch = torch.clamp(target_image_batch, 0, 1)
 
-        overlayImage = torch.cat((warped_image_batch, target_image_batch, warped_image_batch), 1)
+        if single_channel:
+            overlayImage = torch.cat((warped_image_batch, target_image_batch, warped_image_batch), 1)
+        else:
+            overlayImage = torch.cat(
+                (warped_image_batch[:, 0:1, :, :], target_image_batch[:, 1:2, :, :], warped_image_batch[:, 0:1, :, :]),1)
 
         self.vis.images(
             overlayImage[0:8], win="overlay",
@@ -77,9 +102,26 @@ class VisdomHelper:
         )
 
         self.vis.images(
+            fine_warped_image_batch[0:8], win="s2_fine",
+            opts=dict(title='fine_warped_image_batch', caption='warped.', width=1400, height=150, jpgquality=40)
+        )
+
+        self.vis.images(
             target_image_batch[0:8], win="s3",
             opts=dict(title='target_image_batch', caption='target.', width=1400, height=150, jpgquality=40)
         )
+
+
+    def showImageBatch(self,image_batch,win='image',title='image',normailze=False,show_num=8):
+        if normailze:
+            image_batch = normalize_image(image_batch, forward=False)
+            image_batch = torch.clamp(image_batch, 0, 1)
+
+        self.vis.images(image_batch[0:show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
+
+    #def draw_gridloss_group(self,x_list,y_list,win='table',title='table'):
+
+
 
 # def showImage(source_image_batch,warped_image_batch,target_image_batch,isShowRGB=True):
 #

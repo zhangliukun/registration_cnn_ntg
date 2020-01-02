@@ -54,7 +54,7 @@ def parseArgs():
 
 
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum constant')
-    parser.add_argument('--num-epochs', type=int, default=20000, help='number of training epochs')
+    parser.add_argument('--num-epochs', type=int, default=800, help='number of training epochs')
     parser.add_argument('--batch-size', type=int, default=164, help='training batch size')
     parser.add_argument('--weight-decay', type=float, default=0, help='weight decay constant')
     parser.add_argument('--seed', type=int, default=1, help='Pseudo-RNG seed')
@@ -111,7 +111,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
     device,local_rank = torch_util.select_device(multi_process =multi_gpu,apex=mixed_precision)
 
     # args.batch_size = args.batch_size * torch.cuda.device_count()
-    args.batch_size = 16
+    args.batch_size =128
     args.lr_scheduler = True
     draw_test_loss = False
     print(args.batch_size)
@@ -128,7 +128,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
     if args.lr_scheduler:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
                                                                T_max=args.lr_max_iter,
-                                                               eta_min=1e-7)
+                                                               eta_min=1e-8)
     else:
         scheduler = False
 
@@ -210,32 +210,33 @@ if __name__ == '__main__':
     if train_voc2011:
         print("train voc2011")
         #vis_env = "DNN_train_voc2011"
-        vis_env = "DNN_train_voc2011_three_channel_paper_affine"
+        vis_env = "DNN_train_voc2011_paper_aff"
         args.training_image_path = '/home/zlk/datasets/vocdata/VOC_train_2011/VOCdevkit/VOC2011/JPEGImages'
-        load_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_three_channel_paper_NTG_resnet101.pth.tar"
-        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_three_channel_paper_NTG_resnet101.pth.tar"
+        load_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_paper_NTG_resnet101.pth.tar"
+        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_paper_NTG_resnet101.pth.tar"
         args.test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
         #args.lr = 0.0001
         #args.lr = 0.000001
         #args.lr = 0.00001
         # args.lr = 0.0001
-        args.lr = 0.000004
+        args.lr = 0.0000008
         #args.lr = 0.0000004
         log_interval = 50
     else:
         print("train coco")
-        vis_env = "DNN_train"
+        vis_env = "DNN_train_three_channel_small_aff"
         args.training_image_path = '/home/zlk/datasets/coco2014/train2014'
-        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc_coco/checkpoint_voc2011_coco2014_20r_NTG_resnet101.pth.tar"
+        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/coco2014_small_aff_checkpoint_NTG_resnet101.pth.tar"
         #load_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/voc_coco/checkpoint_voc2011_paperaff_NTG_resnet101.pth.tar'
-        load_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/voc_coco/checkpoint_voc2011_coco2014_20r_NTG_resnet101.pth.tar'
+        load_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/coco2014_small_aff_checkpoint_NTG_resnet101.pth.tar'
         args.test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
-        args.lr = 0.00001
+        #args.lr = 0.0001    # train_loss 0.72左右
+        args.lr = 0.000001    # train_loss
         log_interval = 100
 
 
     start_train(args.training_image_path,args.test_image_path,load_checkpoint_path,output_checkpoint_path,vis_env,paper_affine_generator = paper_affine_generator,
-                random_seed=10034,log_interval=log_interval,multi_gpu =multi_gpu, use_cuda=use_cuda)
+                random_seed=10066,log_interval=log_interval,multi_gpu =multi_gpu, use_cuda=use_cuda)
 
     if multi_gpu:
         dist.destroy_process_group() if torch.cuda.device_count() > 1 else None

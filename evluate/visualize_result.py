@@ -9,11 +9,12 @@ from traditional_ntg.estimate_affine_param import estimate_param_batch
 from visualization.matplot_tool import plot_batch_result, plot_matual_information_batch_result, plot_grid_loss_batch
 import matplotlib.pyplot as plt
 
-def visualize_cnn_result(source_image_batch,target_image_batch,theta_estimate_batch,vis):
+def visualize_cnn_result(source_image_batch,target_image_batch,small_warped_iamge_batch,theta_estimate_batch,vis):
     # P3使用CNN配准的结果
     warped_image_list = affine_transform_pytorch(source_image_batch, theta_estimate_batch)
 
-    vis.show_cnn_result(source_image_batch,warped_image_list,target_image_batch)
+    vis.show_cnn_result(source_image_batch,warped_image_list,target_image_batch,small_warped_iamge_batch,single_channel=False)
+
 
 '''
 可视化对比结果，一种迭代次数的结果

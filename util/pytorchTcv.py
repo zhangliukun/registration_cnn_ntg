@@ -11,7 +11,6 @@ def param2theta(param, h, w,use_cuda=True):
     :param use_cuda:
     :return: theta [batch,2,3]
     '''
-    param = torch.Tensor(param)
     if use_cuda:
         param = param.cuda()
     third_row = torch.zeros((param.shape[0],1,3))

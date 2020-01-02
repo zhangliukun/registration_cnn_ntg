@@ -38,7 +38,8 @@ from tnf_transform.transformation import AffineTnf
 '''
 自定义的仿射变换参数生成
 '''
-def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10,to_dict = False):
+def random_affine(img= None,degrees=5,translate=.05,scale=.05,shear=3,to_dict = False):
+#def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10,to_dict = False):
 #def random_affine(img= None,degrees=30,translate=.3,scale=.3,shear=15,to_dict = False):
     # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(.1, .1), scale=(.9, 1.1), shear=(-10, 10))
     # https://medium.com/uruvideo/dataset-augmentation-with-random-homographies-a8f4b44830d4
@@ -93,6 +94,7 @@ def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10,to_dict = 
 论文中的随机仿射变换参数生成
 '''
 def generator_affine_param(random_t=0.5,random_s=0.5,random_alpha = 1/6,random_tps=0.4,to_dict = False):
+#def generator_affine_param(random_t=0.3,random_s=0.3,random_alpha = 1/8,random_tps=0.4,to_dict = False):
     alpha = (np.random.rand(1)-0.5) * 2 * np.pi * random_alpha
     theta = np.random.rand(6)
 
@@ -120,8 +122,9 @@ def generator_affine_param(random_t=0.5,random_s=0.5,random_alpha = 1/6,random_t
 def preprocess_image(image,resize=True,use_cuda=True):    # image (240,240,3)
     # convert to torch Variable
     image = np.expand_dims(image.transpose((2, 0, 1)), 0)
-    image = torch.Tensor(image.astype(np.float32) / 255.0)
-    image_var = Variable(image, requires_grad=False)
+    image_var = torch.Tensor(image.astype(np.float32) / 255.0)
+    if use_cuda:
+        image_var = image_var.cuda()
 
     # Resize image using bilinear sampling with identity affine tnf
     if resize:
@@ -197,6 +200,10 @@ def normalize_image(image, forward=True, mean=[0.485, 0.456, 0.406], std=[0.229,
     mean = mean[1].unsqueeze(0)
     std = std[1].unsqueeze(0)
 
+    if len(im_size) == 2:
+        image = image.unsqueeze(0)
+        im_size = image.size()
+
     if forward:
         if len(im_size) == 3:
             result = image.sub(mean.expand(im_size)).div(std.expand(im_size))
@@ -207,5 +214,6 @@ def normalize_image(image, forward=True, mean=[0.485, 0.456, 0.406], std=[0.229,
             result = image.mul(std.expand(im_size)).add(mean.expand(im_size))
         elif len(im_size) == 4:
             result = image.mul(std.unsqueeze(0).expand(im_size)).add(mean.unsqueeze(0).expand(im_size))
+
 
     return result

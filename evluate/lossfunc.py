@@ -122,7 +122,8 @@ def compute_ntg_pytorch(img1,img2):
 
     m1 = func_rho_torch(g1x - g2x, 0) + func_rho_torch(g1y - g2y, 0)
     n1 = func_rho_torch(g1x, 0) + func_rho_torch(g2x, 0) + func_rho_torch(g1y, 0) + func_rho_torch(g2y, 0)
-    y1 = m1 / (n1 + 0.01)
+    #y1 = m1 / (n1 + 0.01)
+    y1 = m1 / (n1 + 1e-16)
 
     #print(y1)
     return y1,g1xy,g2xy
@@ -148,7 +149,7 @@ def func_rho_torch(x,order,epsilon = 0.01,use_cuda = True):
     else:
         epsilon = torch.Tensor([epsilon]).float()
     if order == 0:
-        y = torch.sqrt(torch.pow(x,2).float() + torch.pow(epsilon,2))
+        y = torch.sqrt(torch.pow(x,2) + torch.pow(epsilon,2))
         y = torch.sum(y)
     elif order == 1:
         y = x/torch.sqrt(torch.pow(x,2) + torch.pow(epsilon,2))

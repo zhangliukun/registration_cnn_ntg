@@ -120,15 +120,13 @@ class RandomTnsPair(object):
         b, c, h, w = image_batch.size()
 
         # 为较大的采样区域生成对称填充图像
-        image_batch = symmetricImagePad(image_batch, self.padding_factor)
+        image_batch = symmetricImagePad(image_batch, self.padding_factor,use_cuda=self.use_cuda)
 
-        # convert to variables 其中Tensor是原始数据，并不知道梯度计算等问题，
-        # Variable里面有data，grad和grad_fn，其中data就是Tensor
-        # image_batch = Variable(image_batch, requires_grad=False)
-        # theta_batch = Variable(theta_batch, requires_grad=False)
+        # indices_R = torch.tensor([choice(self.channel_choicelist)])
+        # indices_G = torch.tensor([choice(self.channel_choicelist)])
 
-        indices_R = torch.tensor([choice(self.channel_choicelist)])
-        indices_G = torch.tensor([choice(self.channel_choicelist)])
+        indices_R = torch.tensor([0])
+        indices_G = torch.tensor([2])
 
         if self.use_cuda:
             indices_R = indices_R.cuda()
@@ -136,6 +134,9 @@ class RandomTnsPair(object):
 
         image_batch_R = torch.index_select(image_batch, 1, indices_R)
         image_batch_G = torch.index_select(image_batch, 1, indices_G)
+
+        image_batch_R = torch.cat((image_batch_R,image_batch_R,image_batch_R),1)
+        image_batch_G = torch.cat((image_batch_G,image_batch_G,image_batch_G),1)
 
         # 获取裁剪的图像
         cropped_image_batch = self.rescalingTnf(image_batch_R, None, self.padding_factor,

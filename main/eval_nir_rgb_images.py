@@ -207,13 +207,15 @@ def main():
 
     print("开始进行测试")
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/best_checkpoint_voc2011_NTG_resnet101.pth.tar"
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
-    ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar"
+    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar"
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101_distributed.pth.tar"
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_20r_NTG_resnet101.pth.tar"
+    #ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/checkpoint_NTG_resnet101.pth.tar'
+    ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_three_channel_paper_NTG_resnet101.pth.tar'
 
     nir_image_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/nir_image'
     rgb_image_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/rgb_image'
@@ -223,7 +225,7 @@ def main():
         #label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
         label_path = '../datasets/row_data/label_file/nir_rgb_custom_20r_param.csv'
     else:
-        label_path = '../datasets/row_data/label_file/coco_test2017_paper_param.csv'
+        label_path = '../datasets/row_data/label_file/nir_rgb_paper_affine_param.csv'
 
     threshold = 10
 

@@ -39,7 +39,7 @@ class TestDataset(Dataset):
         self.cache_images = cache_images
         # read image file
         self.training_image_path = training_image_path
-        self.train_data = os.listdir(self.training_image_path)
+        self.train_data = sorted(os.listdir(self.training_image_path))
         self.image_count = len(self.train_data)
         # bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
         # nb = bi[-1] + 1  # number of batches
@@ -105,7 +105,7 @@ class TestDataset(Dataset):
 使用仿射变换参数生成图片对
 返回{"source_image,traget_image,theta_GT,name"}
 '''
-class RandomTnsPair(object):
+class NtgTestPair(object):
 
     def __init__(self, use_cuda=True, crop_factor=9 / 16, output_size=(240, 240),
                  padding_factor=0.6):
@@ -113,7 +113,7 @@ class RandomTnsPair(object):
         self.crop_factor = crop_factor
         self.padding_factor = padding_factor
         self.out_h, self.out_w = output_size
-        self.channel_choicelist = [0,1,2]
+        self.channel_choicelist = [0,2]
         self.rescalingTnf = AffineTnf(self.out_h, self.out_w,use_cuda=self.use_cuda)
         self.geometricTnf = AffineTnf(self.out_h, self.out_w,use_cuda=self.use_cuda)
 
@@ -126,17 +126,10 @@ class RandomTnsPair(object):
         b, c, h, w = image_batch.size()
 
         # 为较大的采样区域生成对称填充图像
-        image_batch = symmetricImagePad(image_batch, self.padding_factor)
+        image_batch = symmetricImagePad(image_batch, self.padding_factor,use_cuda=self.use_cuda)
 
-        # convert to variables 其中Tensor是原始数据，并不知道梯度计算等问题，
-        # Variable里面有data，grad和grad_fn，其中data就是Tensor
-        # image_batch = Variable(image_batch, requires_grad=False)
-        # theta_batch = Variable(theta_batch, requires_grad=False)
-
-
-
-        indices_R = torch.tensor([choice(self.channel_choicelist)])
-        indices_G = torch.tensor([choice(self.channel_choicelist)])
+        indices_R = torch.tensor([0])
+        indices_G = torch.tensor([2])
 
         if self.use_cuda:
             indices_R = indices_R.cuda()
@@ -152,9 +145,6 @@ class RandomTnsPair(object):
         warped_image_batch = self.geometricTnf(image_batch_G, theta_batch,
                                                self.padding_factor,
                                                self.crop_factor)  # Identity is used as no theta given
-
-        # return {'source_image': warped_image_batch, 'target_image': cropped_image_batch, 'theta_GT': theta_batch,
-        #         'name':image_name}
 
         return {'source_image': cropped_image_batch, 'target_image': warped_image_batch, 'theta_GT': theta_batch,
                 'name': image_name}

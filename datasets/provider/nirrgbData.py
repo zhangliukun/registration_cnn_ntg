@@ -119,8 +119,8 @@ class NirRgbTnsPair(object):
         b, c, h, w = nir_image_batch.size()
 
         # 为较大的采样区域生成对称填充图像
-        rgb_image_batch_pad = symmetricImagePad(rgb_image_batch, self.padding_factor)
-        nir_image_batch_pad = symmetricImagePad(nir_image_batch, self.padding_factor)
+        rgb_image_batch_pad = symmetricImagePad(rgb_image_batch, self.padding_factor,use_cuda=self.use_cuda)
+        nir_image_batch_pad = symmetricImagePad(nir_image_batch, self.padding_factor,use_cuda=self.use_cuda)
 
         # convert to variables 其中Tensor是原始数据，并不知道梯度计算等问题，
         # Variable里面有data，grad和grad_fn，其中data就是Tensor
@@ -130,15 +130,15 @@ class NirRgbTnsPair(object):
         # indices_R = torch.tensor([choice(self.channel_choicelist)])
         # indices_G = torch.tensor([choice(self.channel_choicelist)])
 
-        indices_R = torch.tensor([1])
-        indices_G = torch.tensor([0])
-
-        if self.use_cuda:
-            indices_R = indices_R.cuda()
-            indices_G = indices_G.cuda()
-
-        rgb_image_batch_pad = torch.index_select(rgb_image_batch_pad, 1, indices_R)
-        nir_image_batch_pad = torch.index_select(nir_image_batch_pad, 1, indices_G)
+        # indices_R = torch.tensor([1])
+        # indices_G = torch.tensor([0])
+        #
+        # if self.use_cuda:
+        #     indices_R = indices_R.cuda()
+        #     indices_G = indices_G.cuda()
+        #
+        # rgb_image_batch_pad = torch.index_select(rgb_image_batch_pad, 1, indices_R)
+        # nir_image_batch_pad = torch.index_select(nir_image_batch_pad, 1, indices_G)
 
         # 获取裁剪的图像
         cropped_image_batch = self.rescalingTnf(rgb_image_batch_pad, None, self.padding_factor,

@@ -80,11 +80,15 @@ def affine_transform_pytorch(image_batch,theta_batch):
     :param theta_batch: 参数batch Tensor[batch_size,2,3]
     :return: 变换图片batch warped_image_batch  Tensor[batch_size,C,240,240]
     '''
-    theta_batch = theta_batch.reshape(-1,2,3)
-    _, _, height,width = image_batch.shape
-    gridGen = AffineGridGen(height,width)
-    sample_grid = gridGen(theta_batch)
-    warped_image_batch = F.grid_sample(image_batch,sample_grid)
+    theta_batch = theta_batch.reshape(-1, 2, 3)
+    _, channel, height, width = image_batch.shape
+
+    theta_batch = theta_batch.contiguous()
+    batch_size = theta_batch.size()[0]
+    out_size = torch.Size((batch_size, channel, height, width))
+    affine_grid = F.affine_grid(theta_batch, out_size)
+
+    warped_image_batch = F.grid_sample(image_batch, affine_grid)
 
     return warped_image_batch
 
@@ -95,6 +99,9 @@ def single_affine_transform_opencv(im, p):
     im = cv2.warpAffine(im,p,(width,height))
     return im
 
+'''
+准备弃用
+'''
 def affine_transform_opencv(image_batch, theta_batch):
     '''
     :param image_batch: Tensor[batch_size,C,240,240]
@@ -110,6 +117,26 @@ def affine_transform_opencv(image_batch, theta_batch):
         width = source_img.shape[1]
         warped_img = cv2.warpAffine(source_img, theta_batch[i].numpy(), (width, height))[np.newaxis,:,:]
         warped_img_batch.append(warped_img)
+
+    warped_img_batch = torch.Tensor(warped_img_batch)
+
+    return warped_img_batch
+
+def affine_transform_opencv_2(image_batch, theta_batch):
+    '''
+    :param image_batch: Tensor[batch_size,C,240,240]
+    :param theta_batch: Tensor[batch_size,2,3]
+    :return: warped_img_batch: Tensor[batch_size,C,240,240]
+    '''
+    image_batch = image_batch.detach().cpu().numpy()
+    theta_batch = torch.Tensor(theta_batch)
+    warped_img_batch = []
+    for i in range(len(image_batch)):
+        source_img = image_batch[i].transpose(1,2,0)
+        height = source_img.shape[0]
+        width = source_img.shape[1]
+        warped_img = cv2.warpAffine(source_img, theta_batch[i].numpy(), (width, height))
+        warped_img_batch.append(warped_img.transpose(2,0,1))
 
     warped_img_batch = torch.Tensor(warped_img_batch)
 

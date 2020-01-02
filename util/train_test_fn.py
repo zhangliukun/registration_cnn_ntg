@@ -33,9 +33,6 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
 
         optimizer.zero_grad()
 
-        if gpu_id is not None:
-            batch = batch.cuda(gpu_id,non_blocking=True)
-
         # 计算仿射变换参数
         # start_time = time.time()
         tnf_batch = pair_generation_tnf(batch)
@@ -82,7 +79,7 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
 
             vis.drawImage((source_image_batch).detach(),
                           (warped_image_batch).detach(),
-                          (target_image_batch).detach())
+                          (target_image_batch).detach(),False)
 
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\t\tLoss: {:.6f}'.format(
                 epoch, batch_idx , len(dataloader),
