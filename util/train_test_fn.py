@@ -9,16 +9,14 @@ import time
 import cv2
 
 from tnf_transform.transformation import AffineTnf, AffineGridGen
+from util import utils
 from util.time_util import calculate_diff_time
 
 
 def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,vis,use_cuda=True,
-          gpu_id = None,log_interval=50,scheduler= False):
+          gpu_id = None,log_interval=50,lr_scheduler= False,rank=0):
 
     model.train()
-    # train_loss = torch.Tensor([0])
-    # if use_cuda:
-    #     train_loss = train_loss.cuda()
     train_loss = 0
 
     for batch_idx, batch in enumerate(dataloader):
@@ -57,7 +55,9 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
         # print("变换图片，三种图片", str(elpased))    # 0.00008s
 
         # start_time = time.time()
-        loss, g1xy, g2xy = loss_fn(target_image_batch, warped_image_batch)
+        loss = loss_fn(target_image_batch, warped_image_batch)
+
+        loss_reduced = utils.reduce_loss(loss)
 
         # elpased = calculate_diff_time(start_time)
         # print("计算损失",str(elpased))  # 0.11s
@@ -66,16 +66,16 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
         loss.backward()
         optimizer.step()
 
-        if scheduler:
-            scheduler.step()
+        if lr_scheduler:
+            lr_scheduler.step()
 
-        train_loss += loss.data
+        train_loss += loss_reduced
 
         # elpased = calculate_diff_time(start_time)
         # print("反向传播", str(elpased)) # 0.009s
 
         # start_time = time.time()
-        if batch_idx % log_interval == 0:
+        if batch_idx % log_interval == 0 and rank == 0:
 
             vis.drawImage((source_image_batch).detach(),
                           (warped_image_batch).detach(),
@@ -83,7 +83,7 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
 
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\t\tLoss: {:.6f}'.format(
                 epoch, batch_idx , len(dataloader),
-                100. * batch_idx / len(dataloader), loss.data.item()))
+                100. * batch_idx / len(dataloader), loss.data.item()),'平均loss',loss_reduced.item())
         # elpased = calculate_diff_time(start_time)
         # print('画出图示',str(elpased))  # 0.3s
 
@@ -92,9 +92,9 @@ def train(epoch,model,loss_fn,optimizer,dataloader,pair_generation_tnf,gridGen,v
 
 
     train_loss /= len(dataloader)
-    train_loss = train_loss.item()
-    if scheduler:
-        print('learning rate:',scheduler.get_lr()[-1])
+    # train_loss = train_loss
+    if lr_scheduler:
+        print('learning rate:',lr_scheduler.get_lr()[-1])
     print('Train set: Average loss: {:.4f}'.format(train_loss))
     print('Time:',time.asctime(time.localtime(time.time())))
 

@@ -106,11 +106,14 @@ def test_Grid_loss():
 
 # 使用NTG损失函数，用于训练
 class NTGLoss(nn.Module):
-    def __init__(self):
+    def __init__(self,use_cuda = True):
         super(NTGLoss,self).__init__()
+        self.use_cuda = use_cuda
 
     def forward(self, *input):
-        return compute_ntg_pytorch(input[0],input[1])
+        loss_batch =  compute_ntg_pytorch(input[0],input[1])
+        #return torch.mean(loss_batch)
+        return loss_batch
 
 
 def compute_ntg_pytorch(img1,img2):
@@ -126,7 +129,7 @@ def compute_ntg_pytorch(img1,img2):
     y1 = m1 / (n1 + 1e-16)
 
     #print(y1)
-    return y1,g1xy,g2xy
+    return y1
 
 def gradient_1order(x,h_x=None,w_x=None):
     if h_x is None and w_x is None:

@@ -23,14 +23,14 @@ def select_device(multi_process= False,force_cpu=False, apex=False):
 
     local_rank = 0
 
-    # if multi_process:
-    #     local_rank = dist.get_rank()
-    #     torch.cuda.set_device(local_rank)
-    #     device = torch.device('cuda', local_rank)
-    # else:
-    #     device = torch.device('cuda:0' if cuda else 'cpu')
+    if multi_process:
+        local_rank = dist.get_rank()
+        torch.cuda.set_device(local_rank)
+        device = torch.device('cuda', local_rank)
+    else:
+        device = torch.device('cuda:0' if cuda else 'cpu')
 
-    device = torch.device('cuda:0' if cuda else 'cpu')
+    #device = torch.device('cuda:0' if cuda else 'cpu')
 
     if not cuda:
         print('Using CPU')

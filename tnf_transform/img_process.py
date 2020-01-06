@@ -93,8 +93,8 @@ def random_affine(img= None,degrees=5,translate=.05,scale=.05,shear=3,to_dict = 
 '''
 论文中的随机仿射变换参数生成
 '''
-def generator_affine_param(random_t=0.5,random_s=0.5,random_alpha = 1/6,random_tps=0.4,to_dict = False):
-#def generator_affine_param(random_t=0.3,random_s=0.3,random_alpha = 1/8,random_tps=0.4,to_dict = False):
+# def generator_affine_param(random_t=0.5,random_s=0.5,random_alpha = 1/6,random_tps=0.4,to_dict = False):
+def generator_affine_param(random_t=0.3,random_s=0.3,random_alpha = 1/8,random_tps=0.4,to_dict = False):
     alpha = (np.random.rand(1)-0.5) * 2 * np.pi * random_alpha
     theta = np.random.rand(6)
 

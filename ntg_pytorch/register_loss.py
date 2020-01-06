@@ -77,7 +77,7 @@ def ntg_gradient_torch(objdict,p,use_cuda = False):
 
     return g
 
-def compute_ntg_pytorch(img1,img2,use_cuda=False):
+def compute_ntg_pytorch(img1,img2,use_cuda=True):
     g1x, g1y = deriv_filt_pytorch(img1,False,use_cuda= use_cuda)
     g2x, g2y = deriv_filt_pytorch(img2,False,use_cuda= use_cuda)
 
@@ -98,6 +98,8 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
     :param isconj:
     :return:
     '''
+
+    batch,channel,h,w = I.shape
     if not isconj:
         kernel_x = [[-0.5,0,0.5]]
         kernel_y = [[-0.5],[0],[0.5]]
@@ -105,8 +107,11 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
         kernel_x = [[0.5,0,-0.5]]
         kernel_y = [[0.5],[0],[-0.5]]
 
-    kernel_x = torch.Tensor(kernel_x).unsqueeze(0).unsqueeze(0)
-    kernel_y = torch.Tensor(kernel_y).unsqueeze(0).unsqueeze(0)
+    kernel_x = torch.Tensor(kernel_x).unsqueeze(0)
+    kernel_y = torch.Tensor(kernel_y).unsqueeze(0)
+
+    kernel_x = kernel_x.expand(channel,1,kernel_x.shape[1],kernel_x.shape[2])
+    kernel_y = kernel_y.expand(channel,1,kernel_y.shape[1],kernel_y.shape[2])
 
     if use_cuda:
         kernel_x = kernel_x.cuda()
@@ -123,8 +128,8 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
 
     ## 注意！不同的mode导致的结果也不一样
 
-    Ix = F.conv2d(I,kernel_x,padding=0) # 上下为0
-    Iy = F.conv2d(I,kernel_y,padding=0) # 左右为0
+    Ix = F.conv2d(I,kernel_x,padding=0,groups=channel) # 上下为0
+    Iy = F.conv2d(I,kernel_y,padding=0,groups=channel) # 左右为0
 
     Ix = F.pad(Ix,(1,1,0,0),mode='reflect')
     Iy = F.pad(Iy,(0,0,1,1),mode='reflect')

@@ -137,7 +137,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
 
     # Mixed precision training https://github.com/NVIDIA/apex
     if mixed_precision:
-        model,optimizer = amp.initialize(model,optimizer,opt_level='01',verbosity=0)
+        model,optimizer = amp.initialize(model,optimizer,opt_level='O1',verbosity=0)
 
     if multi_gpu:
         model = nn.DataParallel(model)
@@ -163,7 +163,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
         start_time = time.time()
 
         train_loss = train(epoch, model, loss, optimizer, train_dataloader, pair_generator, gridGen, vis,
-                           use_cuda=use_cuda, log_interval=log_interval,scheduler = scheduler)
+                           use_cuda=use_cuda, log_interval=log_interval,lr_scheduler = scheduler)
 
         if draw_test_loss:
             test_loss = test(model,loss,test_dataloader,pair_generator,gridGen,use_cuda=use_cuda)
@@ -192,7 +192,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
 if __name__ == '__main__':
 
     train_voc2011 = True    # 根据论文在VOC2011的训练集训练
-    multi_gpu = False   #
+    multi_gpu = True   #
     paper_affine_generator = True # 是否使用CVPR论文中的仿射变换参数训练，变化比较大，可能效果不如自定义的小变化好。
     # if train_voc2011:
     #     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -210,16 +210,16 @@ if __name__ == '__main__':
     if train_voc2011:
         print("train voc2011")
         #vis_env = "DNN_train_voc2011"
-        vis_env = "DNN_train_voc2011_paper_aff"
+        vis_env = "DNN_train_voc2011_paper_aff_three_channel"
         args.training_image_path = '/home/zlk/datasets/vocdata/VOC_train_2011/VOCdevkit/VOC2011/JPEGImages'
-        load_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_paper_NTG_resnet101.pth.tar"
-        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_paper_NTG_resnet101.pth.tar"
+        load_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011_paper_three/checkpoint_voc2011_paper_NTG_resnet101.pth.tar"
+        output_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011_paper_three/checkpoint_voc2011_paper_NTG_resnet101.pth.tar"
         args.test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
         #args.lr = 0.0001
         #args.lr = 0.000001
         #args.lr = 0.00001
         # args.lr = 0.0001
-        args.lr = 0.0000008
+        args.lr = 0.000001
         #args.lr = 0.0000004
         log_interval = 50
     else:

@@ -125,24 +125,24 @@ class RandomTnsPair(object):
         # indices_R = torch.tensor([choice(self.channel_choicelist)])
         # indices_G = torch.tensor([choice(self.channel_choicelist)])
 
-        indices_R = torch.tensor([0])
-        indices_G = torch.tensor([2])
-
-        if self.use_cuda:
-            indices_R = indices_R.cuda()
-            indices_G = indices_G.cuda()
-
-        image_batch_R = torch.index_select(image_batch, 1, indices_R)
-        image_batch_G = torch.index_select(image_batch, 1, indices_G)
-
-        image_batch_R = torch.cat((image_batch_R,image_batch_R,image_batch_R),1)
-        image_batch_G = torch.cat((image_batch_G,image_batch_G,image_batch_G),1)
+        # indices_R = torch.tensor([0])
+        # indices_G = torch.tensor([2])
+        #
+        # if self.use_cuda:
+        #     indices_R = indices_R.cuda()
+        #     indices_G = indices_G.cuda()
+        #
+        # image_batch_R = torch.index_select(image_batch, 1, indices_R)
+        # image_batch_G = torch.index_select(image_batch, 1, indices_G)
+        #
+        # image_batch_R = torch.cat((image_batch_R,image_batch_R,image_batch_R),1)
+        # image_batch_G = torch.cat((image_batch_G,image_batch_G,image_batch_G),1)
 
         # 获取裁剪的图像
-        cropped_image_batch = self.rescalingTnf(image_batch_R, None, self.padding_factor,
+        cropped_image_batch = self.rescalingTnf(image_batch, None, self.padding_factor,
                                                 self.crop_factor)  # Identity is used as no theta given
         # 获取裁剪变换的图像
-        warped_image_batch = self.geometricTnf(image_batch_G, theta_batch,
+        warped_image_batch = self.geometricTnf(image_batch, theta_batch,
                                                self.padding_factor,
                                                self.crop_factor)  # Identity is used as no theta given
 
