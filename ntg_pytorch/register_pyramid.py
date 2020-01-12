@@ -4,37 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
+from PIL import Image
 
-def compute_pyramid_while(image_batch,f,nL,ration,use_cuda=False):
-    image_batch = image_batch.transpose(1, 2).transpose(2, 3)   # batch,h,w,channel
-    if use_cuda:
-        image_batch = image_batch.cpu().numpy()
-    else:
-        image_batch = image_batch.numpy()
-    multi_level_image_batch = []
-    multi_level_image_batch.append(torch.from_numpy(image_batch.transpose((0,3,1,2))))
-    for level in range(1,nL):
-
-        level_image_batch = []
-        for image_item in image_batch:
-            level_image = smi.imresize(image_item[:, :, 0], size=ration) / 255.0
-            if len(level_image.shape) == 2:
-                level_image = level_image[:,:,np.newaxis]
-
-            level_image_batch.append(level_image)
-
-        image_batch = np.copy(level_image_batch)
-
-        level_image_batch = np.array(level_image_batch).transpose((0, 3, 1, 2))
-        level_image_batch = torch.from_numpy(level_image_batch).float()
-
-
-
-        if use_cuda:
-            level_image_batch = level_image_batch.cuda()
-
-        multi_level_image_batch.append(level_image_batch)
-    return multi_level_image_batch
 
 def compute_pyramid(image_batch,f,nL,ration,use_cuda=False):
     '''
@@ -59,9 +30,9 @@ def compute_pyramid(image_batch,f,nL,ration,use_cuda=False):
 
         level_image_batch = []
         for image_item in image_batch:
-            #tmp = cv2.filter2D(image_item,-1,f)
-            #level_image = smi.imresize(tmp,size=current_ration)/255.0
-            level_image = smi.imresize(image_item[:,:,0],size=current_ration)/255.0
+            tmp = cv2.filter2D(image_item,-1,f)
+            level_image = smi.imresize(tmp,size=current_ration)/255.0
+            # level_image = smi.imresize(image_item[:,:,0],size=current_ration)/255.0
 
             if len(level_image.shape) == 2:
                 level_image = level_image[:,:,np.newaxis]
@@ -107,13 +78,28 @@ def compute_pyramid_pytorch(image_batch,scaleTnf,filter,nL,ration,use_cuda=False
 
         # 对图片进行高斯滤波
         # if level <= nL-3:
-        #image_batch = F.conv2d(image_batch, kernel, padding=1)
-        # plt.figure()
-        # plt.imshow(image_batch[0].squeeze())
+        # image_batch = F.conv2d(image_batch, kernel, padding=0)
+        # image_batch = F.pad(image_batch, (1, 1, 1, 1), mode='reflect')
 
         multi_level_image_batch.append(image_batch)
 
     return multi_level_image_batch
+
+
+def compute_image_pyramid_single(image, f, nL, ration):
+    P = []
+    tmp = image
+    P.append(tmp)
+
+    for m in range(1, nL):
+        tmp = cv2.filter2D(tmp, -1, f)
+        # 使用skimage来resize图片：https://scikit-image.org/docs/stable/auto_examples/transform/plot_rescale.html
+        img = np.array(Image.fromarray(tmp).resize((int(tmp.shape[0] * ration), int(tmp.shape[1] * ration))))
+        tmp = img
+        P.append(tmp[np.newaxis, :, :])
+
+    return P
+
 
 class ScaleTnf:
 

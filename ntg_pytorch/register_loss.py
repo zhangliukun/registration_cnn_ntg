@@ -127,7 +127,7 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
 
 
     ## 注意！不同的mode导致的结果也不一样
-
+    # 这里的groups是使用了分组卷积，相当于使用每个channel对滤波核进行操作，加了以后能够处理多通道如RGB图片
     Ix = F.conv2d(I,kernel_x,padding=0,groups=channel) # 上下为0
     Iy = F.conv2d(I,kernel_y,padding=0,groups=channel) # 左右为0
 

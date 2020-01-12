@@ -69,6 +69,18 @@ class VisdomHelper:
                       update=update,
                       win=win,opts=layout)
 
+    def drawGridlossBar(self,X_list,ntg_list,cnn_list_A,cnn_ntg_list_B,cvpr_list,layout_title,xlabel ='grid_loss(pixel)',ylabel ='percentage(%)',
+                          win='result',update='append'):
+
+        layout = dict(title=layout_title, xlabel=xlabel, ylabel=ylabel,
+                      legend=['ntg_grid_loss', 'cnn_grid_loss', 'cnn_ntg_grid_loss', 'cvpr_2018_loss'], xaxis=X_list,stacked=False,
+                        update=update,win=win,xtickstep=1)
+
+        self.vis.bar(
+            X=np.column_stack((ntg_list, cnn_list_A, cnn_ntg_list_B, cvpr_list)),opts=layout)
+
+
+
     def getVisdom(self):
         return self.vis
 
@@ -112,12 +124,21 @@ class VisdomHelper:
         )
 
 
-    def showImageBatch(self,image_batch,win='image',title='image',normailze=False,show_num=8):
+    def showImageBatch(self,image_batch,win='image',title='image',normailze=False,show_num=8,start_index = 0):
         if normailze:
             image_batch = normalize_image(image_batch, forward=False)
             image_batch = torch.clamp(image_batch, 0, 1)
 
-        self.vis.images(image_batch[0:show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
+        # self.vis.images(image_batch[0:show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
+        self.vis.images(image_batch[start_index:start_index+show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
+
+    def showHarvardBatch(self,image_batch,win='image',title='image',normailze=False,show_num=8,start_index = 17):
+        if normailze:
+            image_batch = normalize_image(image_batch, forward=False)
+            image_batch = torch.clamp(image_batch, 0, 1)
+
+        # self.vis.images(image_batch[0:show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
+        self.vis.images(image_batch[start_index:start_index+show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
 
     #def draw_gridloss_group(self,x_list,y_list,win='table',title='table'):
 

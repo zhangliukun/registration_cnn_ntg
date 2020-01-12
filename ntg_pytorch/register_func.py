@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from ntg_pytorch.register_loss import ntg_gradient_torch
-from ntg_pytorch.register_pyramid import compute_pyramid, compute_pyramid_pytorch, ScaleTnf, compute_pyramid_while
+from ntg_pytorch.register_pyramid import compute_pyramid, compute_pyramid_pytorch, ScaleTnf
 from util.time_util import calculate_diff_time
 import matplotlib.pyplot as plt
 
@@ -20,6 +20,10 @@ def affine_transform(im,p):
     im = cv2.warpAffine(im,p,(width,height))
     return im
 
+'''
+注意，如果使用cnn计算出来的参数来给传统方法继续迭代的话，计算高斯金字塔的时候不能进行高斯滤波，因为高斯滤波会降低精度，猜想是因为
+有些cnn得到的结果不是很准，这样进行平滑滤波的时候可能会把信息给掩盖掉。
+'''
 def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=None,use_cuda=False,itermax = 800):
 
     batch_size = source_batch.shape[0]
@@ -43,8 +47,9 @@ def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=Non
     pyramid_level1 = 1 + np.floor(np.log(source_batch.shape[2] / parser['minSize']) / np.log(parser['pyramid_spacing']))
     pyramid_level2 = 1 + np.floor(np.log(source_batch.shape[3] / parser['minSize']) / np.log(parser['pyramid_spacing']))
     parser['pyramid_levels'] = np.min((int(pyramid_level1),int(pyramid_level2)))
-    if theta_opencv_batch is not None:
-        parser['pyramid_levels'] = parser['pyramid_levels'] -2
+    # 实测发现如果金字塔不够的话有些情况下可能导致cnn+ntg结合起来的精度还不如传统NTG的精度。
+    # if theta_opencv_batch is not None:
+    #     parser['pyramid_levels'] = parser['pyramid_levels'] -2
     # parser['pyramid_levels'] = 1
 
     source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
@@ -87,12 +92,6 @@ def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=Non
     #                                       1 / parser['pyramid_spacing'],use_cuda=use_cuda)
     #
     # target_pyramid_images_list = compute_pyramid(target_batch,hg, int(parser['pyramid_levels']),
-    #                                              1 / parser['pyramid_spacing'],use_cuda=use_cuda)
-
-    # pyramid_images_list = compute_pyramid_while(source_batch,hg, int(parser['pyramid_levels']),
-    #                                       1 / parser['pyramid_spacing'],use_cuda=use_cuda)
-    #
-    # target_pyramid_images_list = compute_pyramid_while(target_batch,hg, int(parser['pyramid_levels']),
     #                                              1 / parser['pyramid_spacing'],use_cuda=use_cuda)
 
     # plt.show()

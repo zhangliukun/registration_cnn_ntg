@@ -45,12 +45,12 @@ def load_checkpoint(model_without_ddp,optimizer,lr_scheduler,checkpoint_path,loc
 def main(args):
 
     # checkpoint_path = "/home/zale/project/registration_cnn_ntg/trained_weight/voc2011_multi_gpu/checkpoint_voc2011_multi_gpu_paper_NTG_resnet101.pth.tar"
-    checkpoint_path = "/home/zale/project/registration_cnn_ntg/trained_weight/coco2017_multi_gpu/checkpoint_coco2017_multi_gpu_paper30_NTG_resnet101.pth.tar"
+    # checkpoint_path = "/home/zale/project/registration_cnn_ntg/trained_weight/coco2017_multi_gpu/checkpoint_coco2017_multi_gpu_paper30_NTG_resnet101.pth.tar"
     #args.training_image_path = '/home/zale/datasets/vocdata/VOC_train_2011/VOCdevkit/VOC2011/JPEGImages'
-    args.training_image_path = '/media/disk2/zale/datasets/coco2017/train2017'
+    # args.training_image_path = '/media/disk2/zale/datasets/coco2017/train2017'
 
-    # checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011_multi_gpu/checkpoint_voc2011_multi_gpu_three_channel_paper_origin_NTG_resnet101.pth.tar"
-    # args.training_image_path = '/home/zlk/datasets/vocdata/VOC_train_2011/VOCdevkit/VOC2011/JPEGImages'
+    checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011_multi_gpu/checkpoint_voc2011_multi_gpu_three_channel_paper_origin_NTG_resnet101.pth.tar"
+    args.training_image_path = '/home/zlk/datasets/vocdata/VOC_train_2011/VOCdevkit/VOC2011/JPEGImages'
 
     random_seed = 10021
     init_seeds(random_seed + random.randint(0, 10000))
@@ -99,9 +99,10 @@ def main(args):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(params, lr=args.lr)
 
+    # 学习率小于1e-6 ntg损失下降很慢，所以最小设置为1e-6
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
                                                               T_max=args.lr_max_iter,
-                                                              eta_min=1e-8)
+                                                              eta_min=1e-6)
 
     # if mixed_precision:
     #     model,optimizer = amp.initialize(model,optimizer,opt_level='O1',verbosity=0)
@@ -162,7 +163,7 @@ def main(args):
 
 if __name__ == '__main__':
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,3'
 
     parser = argparse.ArgumentParser(description='Multispectral Image Registration PyTorch implementation')
     # Paths
@@ -174,7 +175,7 @@ if __name__ == '__main__':
                         help='path to trained models ')
     parser.add_argument('--trained-models-fn', type=str, default='checkpoint_adam', help='trained model filename')
     # Optimization parameters
-    parser.add_argument('--lr', type=float, default=0.00001, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--lr_max_iter', type=int, default=10000,
                         help='Number of steps between lr starting value and 1e-6 '
                              '(lr default min) when choosing lr_scheduler')

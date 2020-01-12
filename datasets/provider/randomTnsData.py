@@ -148,3 +148,53 @@ class RandomTnsPair(object):
 
         return {'source_image': cropped_image_batch, 'target_image': warped_image_batch, 'theta_GT': theta_batch,
                 'name':image_name}
+
+class RandomTnsPairSingleChannelTest(object):
+
+    def __init__(self, use_cuda=True, crop_factor=9 / 16, output_size=(240, 240),
+                 padding_factor=0.6):
+        self.use_cuda = use_cuda
+        self.crop_factor = crop_factor
+        self.padding_factor = padding_factor
+        self.out_h, self.out_w = output_size
+        self.channel_choicelist = [0,1,2]
+        self.rescalingTnf = AffineTnf(self.out_h, self.out_w,use_cuda=self.use_cuda)
+        self.geometricTnf = AffineTnf(self.out_h, self.out_w,use_cuda=self.use_cuda)
+
+    def __call__(self, batch):
+        image_batch, theta_batch,image_name = batch['image'], batch['theta'],batch['name']
+        if self.use_cuda:
+            image_batch = image_batch.cuda()
+            theta_batch = theta_batch.cuda()
+
+        b, c, h, w = image_batch.size()
+
+        # 为较大的采样区域生成对称填充图像
+        image_batch = symmetricImagePad(image_batch, self.padding_factor,use_cuda=self.use_cuda)
+
+        # indices_R = torch.tensor([choice(self.channel_choicelist)])
+        # indices_G = torch.tensor([choice(self.channel_choicelist)])
+
+        indices_R = torch.tensor([0])
+        indices_G = torch.tensor([2])
+        #
+        if self.use_cuda:
+            indices_R = indices_R.cuda()
+            indices_G = indices_G.cuda()
+
+        image_batch_R = torch.index_select(image_batch, 1, indices_R)
+        image_batch_G = torch.index_select(image_batch, 1, indices_G)
+
+        image_batch_R = torch.cat((image_batch_R,image_batch_R,image_batch_R),1)
+        image_batch_G = torch.cat((image_batch_G,image_batch_G,image_batch_G),1)
+
+        # 获取裁剪的图像
+        cropped_image_batch = self.rescalingTnf(image_batch_R, None, self.padding_factor,
+                                                self.crop_factor)  # Identity is used as no theta given
+        # 获取裁剪变换的图像
+        warped_image_batch = self.geometricTnf(image_batch_G, theta_batch,
+                                               self.padding_factor,
+                                               self.crop_factor)  # Identity is used as no theta given
+
+        return {'source_image': cropped_image_batch, 'target_image': warped_image_batch, 'theta_GT': theta_batch,
+                'name':image_name}

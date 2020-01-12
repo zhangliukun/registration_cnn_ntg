@@ -77,6 +77,37 @@ def random_affine(img= None,degrees=5,translate=.05,scale=.05,shear=3,to_dict = 
 
     return theta
 
+def generate_affine_param(degree=0,translate_x=0,translate_y=0,scale=0,shear=0,to_dict=False):
+    R = np.eye(3)
+    R[:2] = cv2.getRotationMatrix2D(angle=degree,center=(0,0),scale=scale)
+
+    T = np.eye(3)
+    T[0,2] = translate_x
+    T[1,2] = translate_y
+
+    S = np.eye(3)
+    S[0,1] = math.tan(shear * math.pi / 180) # x shear
+    S[1,0] = math.tan(shear * math.pi / 180) # y shear
+
+    theta = S @ T @ R
+
+    theta = theta[0:2]
+
+    if to_dict:
+        temp = theta.reshape(6)
+        theta = {}
+        theta['p0'] = temp[0]
+        theta['p1'] = temp[1]
+        theta['p2'] = temp[2]
+        theta['p3'] = temp[3]
+        theta['p4'] = temp[4]
+        theta['p5'] = temp[5]
+
+    return theta
+
+
+
+
 # def geometric_random_affine(random_t=0.5, random_s=0.5,random_alpha=1/6):
 #
 #     alpha = (np.random.rand(1) - 0.5) * 2 * np.pi * random_alpha
@@ -176,6 +207,34 @@ class NormalizeImageDict:
                 sample[key] /= 255.0
             sample[key] = self.normalize_single_channel(sample[key])
         return sample
+
+def normalize_image_simple(image,forward=True):
+
+    # if image.shape[1] == 3:
+    mean = [0.406]
+    std = [0.225]
+    # else:
+    #     mean = [0.485, 0.456, 0.406]
+    #     std = [0.229, 0.224, 0.225]
+
+    im_size = image.size()
+    mean = torch.Tensor(mean)
+    std = torch.Tensor(std)
+    if image.is_cuda:
+        mean = mean.cuda()
+        std = std.cuda()
+
+    if len(im_size) == 2:
+        image = image.unsqueeze(0)
+        im_size = image.size()
+
+    if forward:
+        result = image.sub(mean.expand(im_size)).div(std.expand(im_size))
+    else:
+        result = image.mul(std.expand(im_size)).add(mean.expand(im_size))
+
+    return result
+
 
 def normalize_image(image, forward=True, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
     '''
