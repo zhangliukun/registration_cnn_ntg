@@ -6,10 +6,11 @@ import pandas as pd
 import numpy as np
 import csv
 import cv2
+import scipy.io as scio
 
 
 #row_data_dir_path = '/Users/zale/project/myself/registration_cnn_ntg/datasets/row_data/VOC/'
-from tnf_transform.img_process import random_affine, generator_affine_param
+from tnf_transform.img_process import random_affine, generator_affine_param, generate_affine_param
 from train import init_seeds
 
 
@@ -17,6 +18,8 @@ def read_row_data(data_path):
     image_name_list = os.listdir(data_path)
     #print(image_name_list)
     return image_name_list
+
+
 
 def affine_transform(image,param):
     height = image.shape[0]
@@ -71,24 +74,27 @@ def write_csv(output_path,datadicts):
 #         cv2.imshow('compare',result)
 #         cv2.waitKey(0)
 
-init_seeds(seed= 46763)
-#row_data_dir_path = '/home/zlk/datasets/coco_test2017'
-row_data_dir_path = '../row_data/COCO/'
-# row_data_dir_path = '/home/zlk/datasets/coco_test2017_n2000'
-# row_data_dir_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/nir_image'
 
-test_affine_image()
 
-use_custom_random_aff = False
 
-if use_custom_random_aff:
-    # output_path = '../row_data/label_file/coco_test2017_custom_param.csv'
-    # output_path = '../row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
-    output_path = '../row_data/label_file/nir_rgb_custom_20r_param.csv'
-else:
-    output_path = '../row_data/label_file/coco_test2017_paper_param_n2000.csv'
-    # output_path = '../row_data/label_file/nir_rgb_paper_affine_param.csv'
 
-#generate_result_dict(row_data_dir_path,output_path,use_custom_random_aff=use_custom_random_aff)
 
-#print(random_affine(to_dict= True))
+if __name__ == '__main__':
+    init_seeds(seed= 46763)
+    #row_data_dir_path = '/home/zlk/datasets/coco_test2017'
+    row_data_dir_path = '../row_data/COCO/'
+    # row_data_dir_path = '/home/zlk/datasets/coco_test2017_n2000'
+    # row_data_dir_path = '/mnt/4T/zlk/datasets/mulitspectral/nirscene_total/nir_image'
+    use_custom_random_aff = False
+    if use_custom_random_aff:
+        # output_path = '../row_data/label_file/coco_test2017_custom_param.csv'
+        # output_path = '../row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
+        output_path = '../row_data/label_file/nir_rgb_custom_20r_param.csv'
+    else:
+        output_path = '../row_data/label_file/coco_test2017_paper_param_n2000.csv'
+        # output_path = '../row_data/label_file/nir_rgb_paper_affine_param.csv'
+
+    #generate_result_dict(row_data_dir_path,output_path,use_custom_random_aff=use_custom_random_aff)
+
+    #print(random_affine(to_dict= True))
+
