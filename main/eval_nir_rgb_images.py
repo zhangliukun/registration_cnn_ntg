@@ -21,7 +21,6 @@ from tnf_transform.img_process import preprocess_image, NormalizeImage, Normaliz
 from tnf_transform.transformation import AffineTnf, affine_transform_opencv, affine_transform_pytorch, AffineGridGen
 from util.pytorchTcv import theta2param, param2theta
 from util.time_util import calculate_diff_time
-from traditional_ntg.estimate_affine_param import estimate_affine_param, estimate_param_batch
 from visualization.matplot_tool import plot_batch_result
 import time
 import torch.nn.functional as F

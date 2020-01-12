@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from cvpr2018code.cnn_geometric_model import CNNGeometric
 from datasets.provider.nirrgbData import NirRgbData, NirRgbTnsPair
-from datasets.provider.randomTnsData import RandomTnsPair
+from datasets.provider.randomTnsData import RandomTnsPair, RandomTnsPairSingleChannelTest
 from datasets.provider.singlechannelData import SinglechannelData, SingleChannelPairTnf
 from datasets.provider.test_dataset import TestDataset
 from evluate.lossfunc import GridLoss, NTGLoss
@@ -78,7 +78,10 @@ def createDataloader(image_path,label_path,batch_size = 16,use_cuda=True):
     dataset = TestDataset(image_path,label_path,transform=NormalizeImageDict(["image"]))
     dataloader = DataLoader(dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
     #pair_generator = SingleChannelPairTnf(use_cuda=use_cuda)
-    pair_generator = RandomTnsPair(use_cuda=use_cuda)
+    # print('use RandomTnsPair_single')
+    # pair_generator = RandomTnsPair(use_cuda=use_cuda)
+    print('use RandomTnsPair_single')
+    pair_generator = RandomTnsPairSingleChannelTest(use_cuda=use_cuda)
 
     return dataloader,pair_generator
 
@@ -114,17 +117,23 @@ def compute_average_grid_loss(grid_loss_list):
 
     x_list= [0] * 10
 
+    total_count_all = 0
     total_count = 0
     total_loss = 0
     for grid in grid_loss_list:
         for item in grid:
+            total_count_all += 1
             if item > 10:
-                x_list[9] += 1
+                # x_list[9] += 1
                 continue
             x_list[int(np.floor(item))] += 1
             total_count += 1
             total_loss += item
-    print('平均网格点损失:', total_loss / total_count, total_loss,total_count)
+    if total_count == 0:
+        print('出现错误，没有正确图片')
+    else:
+        print('平均网格点损失:', total_loss / total_count, total_loss,total_count)
+    x_list = [x*1.0/total_count_all for x in x_list]  # 显示百分比
     return x_list
 
 
@@ -264,8 +273,11 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
     cvpr_group_list = compute_average_grid_loss(grid_loss_cvpr_list)
 
     x_list = [i for i in range(10)]
-    vis.drawGridlossGroup(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
-                          layout_title="nir_result",win='nir_result')
+    # vis.drawGridlossGroup(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
+    #                       layout_title="nir_result",win='nir_result')
+
+    vis.drawGridlossBar(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
+                          layout_title="Grid_loss_histogram",win='Grid_loss_histogram')
     # vis.getVisdom().line(x_list,cnn_group_list)
     # vis.getVisdom().line(X=np.column_stack(x_list,x_list),
     #                      Y =np.column_stack(cnn_group_list,cnn_ntg_group_list))
@@ -306,19 +318,24 @@ def main():
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar"
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_20r_NTG_resnet101.pth.tar"
-    ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/checkpoint_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/checkpoint_NTG_resnet101.pth.tar'
+    #ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_voc2011_multi_gpu_three_channel_paper_origin_NTG_resnet101.pth.tar'
+    ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_coco2017_multi_gpu_paper30_NTG_resnet101.pth.tar'
     #test_image_path = '/home/zlk/datasets/coco_test2017'
     test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
 
 
 
     use_custom_aff_param = True
+    print("use_custom_aff_param:",use_custom_aff_param)
     if use_custom_aff_param:
-        label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
+        label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_30r_param.csv'
     else:
         label_path = '../datasets/row_data/label_file/coco_test2017_paper_param_n2000.csv'
 
-    eval_kind = 2   # 1是coco2017test，2是nir image
+    eval_kind = 1   # 1是coco2017test，2是nir image
+
+    print("label_path:",label_path)
 
     threshold = 10
     batch_size = 108
