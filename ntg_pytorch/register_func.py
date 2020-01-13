@@ -49,7 +49,7 @@ def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=Non
     parser['pyramid_levels'] = np.min((int(pyramid_level1),int(pyramid_level2)))
     # 实测发现如果金字塔不够的话有些情况下可能导致cnn+ntg结合起来的精度还不如传统NTG的精度。
     # if theta_opencv_batch is not None:
-    #     parser['pyramid_levels'] = parser['pyramid_levels'] -2
+    #     parser['pyramid_levels'] = parser['pyramid_levels'] -1
     # parser['pyramid_levels'] = 1
 
     source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
