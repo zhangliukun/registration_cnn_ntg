@@ -10,7 +10,7 @@ import numpy as np
 """
 
 class FeatureExtraction(torch.nn.Module):
-    def __init__(self, use_cuda=True, feature_extraction_cnn='vgg', last_layer=''):
+    def __init__(self, use_cuda=True, feature_extraction_cnn='vgg', last_layer='',single_channel = False):
         super(FeatureExtraction, self).__init__()
         if feature_extraction_cnn == 'vgg':
             self.model = models.vgg16(pretrained=True)
@@ -26,8 +26,9 @@ class FeatureExtraction(torch.nn.Module):
         if feature_extraction_cnn == 'resnet101':
             self.model = models.resnet101(pretrained=True)
             # 为了符合单通道的图片，所以这边修改网络的channel
-            # self.model.conv1.in_channels=1
-            # self.model.conv1.weight.data = self.model.conv1.weight.data[:,0,:,:][:,np.newaxis,:,:]
+            if single_channel:
+                self.model.conv1.in_channels=1
+                self.model.conv1.weight.data = self.model.conv1.weight.data[:,0,:,:][:,np.newaxis,:,:]
             #
             resnet_feature_layers = ['conv1',
                                      'bn1',
@@ -119,12 +120,12 @@ class FeatureRegression(nn.Module):
         return x
 
 class CNNRegistration(nn.Module):
-    def __init__(self,normalize_features=True,normalize_matches=True,batch_normalization=True,use_cuda=True,feature_extraction_cnn='resnet101'):
+    def __init__(self,single_channel,normalize_features=True,normalize_matches=True,use_cuda=True,feature_extraction_cnn='resnet101'):
         super(CNNRegistration,self).__init__()
         self.use_cuda = use_cuda
         self.normalize_features = normalize_features
         self.normalize_matches = normalize_matches
-        self.FeatureExtraction = FeatureExtraction(use_cuda=self.use_cuda,feature_extraction_cnn=feature_extraction_cnn)
+        self.FeatureExtraction = FeatureExtraction(use_cuda=self.use_cuda,feature_extraction_cnn=feature_extraction_cnn,single_channel=single_channel)
         self.FeatureL2Norm = FeatureL2Norm()
         self.FeatureCorrelation = FeatureCorrelation()
         output_dim = 6      # 通过全连接层回归出6个参数

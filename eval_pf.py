@@ -40,8 +40,11 @@ def main():
     # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar"
     # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_20r_NTG_resnet101.pth.tar"
-    ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/checkpoint_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/checkpoint_NTG_resnet101.pth.tar'
     small_aff_ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/coco2014_small_aff_checkpoint_NTG_resnet101.pth.tar'
+    ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/best_checkpoint_voc2011_three_channel_paper_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011_paper_affine/best_checkpoint_voc2011_NTG_resnet101.pth.tar'
+
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_30r_NTG_resnet101.pth.tar"
     # image_path = '../datasets/row_data/VOC/3
     # label_path = '../datasets/row_data/label_file/aff_param2.csv'
@@ -104,60 +107,60 @@ def main():
         #cnn_ntg_param_batch = estimate_param_batch(source_image_batch, target_image_batch, theta_opencv,itermax = 600)
         #theta_pytorch = param2theta(cnn_ntg_param_batch.view(-1, 2, 3),240,240,use_cuda=use_cuda)
 
-        theta_opencv = theta2param(theta_estimate_batch.view(-1, 2, 3), 240, 240, use_cuda=use_cuda)
-        with torch.no_grad():
-            ntg_param_batch = estimate_aff_param_iterator(source_image_batch[:, 0, :, :].unsqueeze(1),
-                                                          target_image_batch[:, 0, :, :].unsqueeze(1),
-                                                          None, use_cuda=use_cuda, itermax=600)
-
-            cnn_ntg_param_batch = estimate_aff_param_iterator(source_image_batch[:, 0, :, :].unsqueeze(1),
-                                                              target_image_batch[:, 0, :, :].unsqueeze(1),
-                                                              theta_opencv, use_cuda=use_cuda, itermax=600)
-
-            ntg_param_pytorch_batch = param2theta(ntg_param_batch,240, 240, use_cuda=use_cuda)
-            cnn_ntg_param_pytorch_batch = param2theta(cnn_ntg_param_batch,240, 240, use_cuda=use_cuda)
+        # theta_opencv = theta2param(theta_estimate_batch.view(-1, 2, 3), 240, 240, use_cuda=use_cuda)
+        # with torch.no_grad():
+        #     ntg_param_batch = estimate_aff_param_iterator(source_image_batch[:, 0, :, :].unsqueeze(1),
+        #                                                   target_image_batch[:, 0, :, :].unsqueeze(1),
+        #                                                   None, use_cuda=use_cuda, itermax=600)
+        #
+        #     cnn_ntg_param_batch = estimate_aff_param_iterator(source_image_batch[:, 0, :, :].unsqueeze(1),
+        #                                                       target_image_batch[:, 0, :, :].unsqueeze(1),
+        #                                                       theta_opencv, use_cuda=use_cuda, itermax=600)
+        #
+        #     ntg_param_pytorch_batch = param2theta(ntg_param_batch,240, 240, use_cuda=use_cuda)
+        #     cnn_ntg_param_pytorch_batch = param2theta(cnn_ntg_param_batch,240, 240, use_cuda=use_cuda)
 
 
         warped_points_aff_norm = pt.affPointTnf(theta_estimate_batch, target_points_norm)
         warped_points_aff = PointsToPixelCoords(warped_points_aff_norm, source_im_size)
 
-        ntg_warped_points_aff_norm = pt.affPointTnf(ntg_param_pytorch_batch, target_points_norm)
-        ntg_warped_points_aff = PointsToPixelCoords(ntg_warped_points_aff_norm, source_im_size)
-
-        cnn_ntg_warped_points_aff_norm = pt.affPointTnf(cnn_ntg_param_pytorch_batch, target_points_norm)
-        cnn_ntg_warped_points_aff = PointsToPixelCoords(cnn_ntg_warped_points_aff_norm, source_im_size)
+        # ntg_warped_points_aff_norm = pt.affPointTnf(ntg_param_pytorch_batch, target_points_norm)
+        # ntg_warped_points_aff = PointsToPixelCoords(ntg_warped_points_aff_norm, source_im_size)
+        #
+        # cnn_ntg_warped_points_aff_norm = pt.affPointTnf(cnn_ntg_param_pytorch_batch, target_points_norm)
+        # cnn_ntg_warped_points_aff = PointsToPixelCoords(cnn_ntg_warped_points_aff_norm, source_im_size)
 
         L_pck = batch['L_pck'].data
 
         correct_points_aff, num_points = correct_keypoints(source_points.data,
                                                            warped_points_aff.data, L_pck)
-        ntg_correct_points_aff, ntg_num_points = correct_keypoints(source_points.data,
-                                                           ntg_warped_points_aff.data, L_pck)
-        cnn_ntg_correct_points_aff, cnn_ntg_num_points = correct_keypoints(source_points.data,
-                                                           cnn_ntg_warped_points_aff.data, L_pck)
+        # ntg_correct_points_aff, ntg_num_points = correct_keypoints(source_points.data,
+        #                                                    ntg_warped_points_aff.data, L_pck)
+        # cnn_ntg_correct_points_aff, cnn_ntg_num_points = correct_keypoints(source_points.data,
+        #                                                    cnn_ntg_warped_points_aff.data, L_pck)
 
         total_correct_points_aff += correct_points_aff
         total_points += num_points
 
-        ntg_total_correct_points_aff += ntg_correct_points_aff
-        ntg_total_points += ntg_num_points
-
-        cnn_ntg_total_correct_points_aff += cnn_ntg_correct_points_aff
-        cnn_ntg_total_points += cnn_ntg_num_points
+        # ntg_total_correct_points_aff += ntg_correct_points_aff
+        # ntg_total_points += ntg_num_points
+        #
+        # cnn_ntg_total_correct_points_aff += cnn_ntg_correct_points_aff
+        # cnn_ntg_total_points += cnn_ntg_num_points
 
 
         print('Batch: [{}/{} ({:.0f}%)]'.format(i, len(dataloader), 100. * i / len(dataloader)))
 
     total_correct_points_aff = total_correct_points_aff.__float__()
-    ntg_total_correct_points_aff = ntg_total_correct_points_aff.__float__()
-    cnn_ntg_total_correct_points_aff = cnn_ntg_total_correct_points_aff.__float__()
+    # ntg_total_correct_points_aff = ntg_total_correct_points_aff.__float__()
+    # cnn_ntg_total_correct_points_aff = cnn_ntg_total_correct_points_aff.__float__()
 
     PCK_aff=total_correct_points_aff/total_points
-    ntg_PCK_aff=ntg_total_correct_points_aff/ntg_total_points
-    cnn_ntg_PCK_aff=cnn_ntg_total_correct_points_aff/cnn_ntg_total_points
+    # ntg_PCK_aff=ntg_total_correct_points_aff/ntg_total_points
+    # cnn_ntg_PCK_aff=cnn_ntg_total_correct_points_aff/cnn_ntg_total_points
     print('PCK affine:',PCK_aff)
-    print('ntg_PCK affine:',ntg_PCK_aff)
-    print('cnn_ntg_PCK affine:',cnn_ntg_PCK_aff)
+    # print('ntg_PCK affine:',ntg_PCK_aff)
+    # print('cnn_ntg_PCK affine:',cnn_ntg_PCK_aff)
     print('Done!')
 
 if __name__ == '__main__':

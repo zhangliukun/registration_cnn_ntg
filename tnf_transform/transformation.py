@@ -92,6 +92,38 @@ def affine_transform_pytorch(image_batch,theta_batch):
 
     return warped_image_batch
 
+def affine_transform_opencv_batch(image_batch,theta_batch,use_cuda = False):
+    '''
+    :param image_batch: 图片batch Tensor[batch_size,C,240,240]
+    :param theta_batch: 参数batch Tensor[batch_size,2,3]
+    :return: 变换图片batch warped_image_batch  Tensor[batch_size,C,240,240]
+    '''
+
+    image_batch = image_batch.cpu()
+    theta_batch = theta_batch.cpu()
+
+
+    theta_batch = theta_batch.reshape(-1, 2, 3)
+    batch_size, channel, height, width = image_batch.shape
+
+    image_batch = image_batch.numpy().transpose((0,2,3,1))
+    theta_batch = theta_batch.numpy()
+
+    warped_image_batch = []
+
+    for i in range(batch_size):
+        warped_image = cv2.warpAffine(image_batch[i],theta_batch[i],(width,height),flags=cv2.INTER_CUBIC)
+        if len(warped_image.shape)==2:
+            warped_image = warped_image[:,:,np.newaxis]
+        warped_image_batch.append(warped_image)
+
+    warped_image_batch = np.array(warped_image_batch).transpose((0,3,1,2))
+    warped_image_batch= torch.from_numpy(warped_image_batch).float()
+
+    if use_cuda:
+        warped_image_batch = warped_image_batch.cuda()
+    return warped_image_batch
+
 # 使用opencv的仿射变换
 def single_affine_transform_opencv(im, p):
     height = im.shape[0]

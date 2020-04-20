@@ -6,9 +6,10 @@ import numpy as np
 import torch
 
 from ntg_pytorch.register_loss import ntg_gradient_torch
-from ntg_pytorch.register_pyramid import compute_pyramid, compute_pyramid_pytorch, ScaleTnf
-from util.time_util import calculate_diff_time
+from ntg_pytorch.register_pyramid import compute_pyramid, compute_pyramid_pytorch, ScaleTnf, compute_pyramid_iter
 import matplotlib.pyplot as plt
+
+from traditional_ntg.loss_function import ntg_gradient
 
 
 def scale_image(img,IMIN,IMAX):
@@ -17,14 +18,15 @@ def scale_image(img,IMIN,IMAX):
 def affine_transform(im,p):
     height = im.shape[0]
     width = im.shape[1]
-    im = cv2.warpAffine(im,p,(width,height))
+    im = cv2.warpAffine(im,p,(width,height),flags=cv2.INTER_CUBIC)
+    # im = cv2.warpAffine(im,p,(width,height),flags=cv2.INTER_NEAREST)
     return im
 
 '''
 注意，如果使用cnn计算出来的参数来给传统方法继续迭代的话，计算高斯金字塔的时候不能进行高斯滤波，因为高斯滤波会降低精度，猜想是因为
 有些cnn得到的结果不是很准，这样进行平滑滤波的时候可能会把信息给掩盖掉。
 '''
-def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=None,use_cuda=False,itermax = 800):
+def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=None,use_cuda=False,itermax = 800,normalize_func = None):
 
     batch_size = source_batch.shape[0]
 
@@ -48,26 +50,34 @@ def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=Non
     pyramid_level2 = 1 + np.floor(np.log(source_batch.shape[3] / parser['minSize']) / np.log(parser['pyramid_spacing']))
     parser['pyramid_levels'] = np.min((int(pyramid_level1),int(pyramid_level2)))
     # 实测发现如果金字塔不够的话有些情况下可能导致cnn+ntg结合起来的精度还不如传统NTG的精度。
-    # if theta_opencv_batch is not None:
-    #     parser['pyramid_levels'] = parser['pyramid_levels'] -1
+    # print('串行金字塔，层数减1')
+    if theta_opencv_batch is not None:
+        parser['pyramid_levels'] = parser['pyramid_levels'] -1
     # parser['pyramid_levels'] = 1
 
-    source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
-    target_batch_max = torch.max(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
 
-    IMAX_index = target_batch_max > source_batch_max
-    source_batch_max[IMAX_index] = target_batch_max[IMAX_index]
-    IMAX = source_batch_max
+    if normalize_func is not None:
+        print('分开归一化')
+        source_batch = normalize_func.scale_image_batch(source_batch)
+        target_batch = normalize_func.scale_image_batch(target_batch)
+    else:
+        print('原图目标图联合归一化')
+        source_batch_max = torch.max(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+        target_batch_max = torch.max(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
 
-    source_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
-    target_batch_min = torch.min(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+        IMAX_index = target_batch_max > source_batch_max
+        source_batch_max[IMAX_index] = target_batch_max[IMAX_index]
+        IMAX = source_batch_max
 
-    IMIN_index = target_batch_min < source_batch_min
-    source_batch_min[IMIN_index] = target_batch_min[IMIN_index]
-    IMIN = source_batch_min
+        source_batch_min = torch.min(source_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
+        target_batch_min = torch.min(target_batch.view(batch_size,1,-1),2)[0].unsqueeze(2).unsqueeze(2)
 
-    source_batch = scale_image(source_batch,IMIN,IMAX)
-    target_batch = scale_image(target_batch,IMIN,IMAX)
+        IMIN_index = target_batch_min < source_batch_min
+        source_batch_min[IMIN_index] = target_batch_min[IMIN_index]
+        IMIN = source_batch_min
+
+        source_batch = scale_image(source_batch,IMIN,IMAX)
+        target_batch = scale_image(target_batch,IMIN,IMAX)
 
     batch_size,channel, h, w = source_batch.shape
 
@@ -81,18 +91,26 @@ def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=Non
 
     scaleTnf = ScaleTnf(use_cuda=use_cuda)
 
-    pyramid_images_list = compute_pyramid_pytorch(source_batch,scaleTnf,hg, int(parser['pyramid_levels']),
-                                          1 / parser['pyramid_spacing'],use_cuda = use_cuda)
-
-    target_pyramid_images_list = compute_pyramid_pytorch(target_batch,scaleTnf,hg, int(parser['pyramid_levels']),
-                                                 1 / parser['pyramid_spacing'],use_cuda = use_cuda)
-
+    # print('使用pytorch计算金字塔') 实验证明不如串行金字塔好
+    # pyramid_images_list = compute_pyramid_pytorch(source_batch,scaleTnf,hg, int(parser['pyramid_levels']),
+    #                                       1 / parser['pyramid_spacing'],use_cuda = use_cuda)
     #
+    # target_pyramid_images_list = compute_pyramid_pytorch(target_batch,scaleTnf,hg, int(parser['pyramid_levels']),
+    #                                              1 / parser['pyramid_spacing'],use_cuda = use_cuda)
+
+
+    # print('使用不加高斯滤波串行计算金字塔')
     # pyramid_images_list = compute_pyramid(source_batch,hg, int(parser['pyramid_levels']),
     #                                       1 / parser['pyramid_spacing'],use_cuda=use_cuda)
     #
     # target_pyramid_images_list = compute_pyramid(target_batch,hg, int(parser['pyramid_levels']),
     #                                              1 / parser['pyramid_spacing'],use_cuda=use_cuda)
+    #
+    pyramid_images_list = compute_pyramid_iter(source_batch,hg, int(parser['pyramid_levels']),
+                                          1 / parser['pyramid_spacing'],use_cuda=use_cuda)
+
+    target_pyramid_images_list = compute_pyramid_iter(target_batch,hg, int(parser['pyramid_levels']),
+                                                 1 / parser['pyramid_spacing'],use_cuda=use_cuda)
 
     # plt.show()
 
@@ -141,8 +159,8 @@ def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=Non
         X_array = X_array.float().transpose(0, 1)
         Y_array = Y_array.float().transpose(0, 1)
 
-        copy['W_array'] = X_array.expand(batch_size, channel, -1, -1)
-        copy['H_array'] = Y_array.expand(batch_size, channel, -1, -1)
+        # copy['W_array'] = X_array.expand(batch_size, channel, -1, -1)
+        # copy['H_array'] = Y_array.expand(batch_size, channel, -1, -1)
 
         copy['X_array'] = (X_array / torch.max(X_array)).expand(batch_size,channel,-1,-1)
         copy['Y_array'] = (Y_array / torch.max(Y_array)).expand(batch_size,channel,-1,-1)
@@ -153,6 +171,17 @@ def estimate_aff_param_iterator(source_batch,target_batch,theta_opencv_batch=Non
 
         while not converged:
             start_time = time.time()
+
+            # source_image_batch = copy['source_images'].squeeze().numpy()
+            # target_image_batch = copy['target_images'].squeeze().numpy()
+            # images = np.stack((source_image_batch,target_image_batch),2)
+            # copy['images'] =images
+            # copy['options'] = None
+            # copy['X'] = (X_array / torch.max(X_array)).expand(batch_size, channel, -1, -1).numpy()
+            # copy['Y'] = (Y_array / torch.max(Y_array)).expand(batch_size, channel, -1, -1).numpy()
+            # g = ntg_gradient(copy,p.squeeze().numpy())
+            # g = torch.from_numpy(g).unsqueeze(0).float()
+
             g = ntg_gradient_torch(copy, p, use_cuda=use_cuda).detach()
             # print("ntg_gradient_torch", calculate_diff_time(start_time))
             if p is None:

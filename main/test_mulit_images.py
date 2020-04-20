@@ -7,6 +7,7 @@ from collections import OrderedDict
 import cv2
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+import scipy.io as scio
 
 from cvpr2018code.cnn_geometric_model import CNNGeometric
 from datasets.provider.nirrgbData import NirRgbData, NirRgbTnsPair
@@ -20,6 +21,7 @@ from model.cnn_registration_model import CNNRegistration
 from ntg_pytorch.register_func import estimate_aff_param_iterator
 from tnf_transform.img_process import preprocess_image, NormalizeImage, NormalizeImageDict
 from tnf_transform.transformation import AffineTnf, affine_transform_opencv, affine_transform_pytorch, AffineGridGen
+from util.eval_util import calculate_mutual_info_batch
 from util.pytorchTcv import theta2param, param2theta
 from util.time_util import calculate_diff_time
 from traditional_ntg.estimate_affine_param import estimate_affine_param, estimate_param_batch
@@ -30,14 +32,15 @@ import torch.nn.functional as F
 from visualization.train_visual import VisdomHelper
 
 
-def createModel(ntg_checkpoint_path,use_cuda=True):
+def createModel(ntg_checkpoint_path,single_channel= False,use_cuda=True):
     '''
     创建模型
     :param ntg_checkpoint_path:
     :param use_cuda:
     :return:
     '''
-    ntg_model = CNNRegistration(use_cuda=use_cuda)
+    # ntg_model = CNNRegistration(use_cuda=use_cuda)
+    ntg_model = CNNRegistration(use_cuda=use_cuda,single_channel=single_channel)
 
     print("Loading trained model weights")
     print("ntg_checkpoint_path:",ntg_checkpoint_path)
@@ -77,11 +80,10 @@ def createDataloader(image_path,label_path,batch_size = 16,use_cuda=True):
     #dataset = SinglechannelData(image_path,label_path,transform=NormalizeImage(normalize_range=True, normalize_img=False))
     dataset = TestDataset(image_path,label_path,transform=NormalizeImageDict(["image"]))
     dataloader = DataLoader(dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
-    #pair_generator = SingleChannelPairTnf(use_cuda=use_cuda)
+    # pair_generator = SingleChannelPairTnf(use_cuda=use_cuda)
     # print('use RandomTnsPair_single')
-    # pair_generator = RandomTnsPair(use_cuda=use_cuda)
-    print('use RandomTnsPair_single')
-    pair_generator = RandomTnsPairSingleChannelTest(use_cuda=use_cuda)
+    pair_generator = RandomTnsPair(use_cuda=use_cuda)
+    # pair_generator = RandomTnsPairSingleChannelTest(use_cuda=use_cuda)
 
     return dataloader,pair_generator
 
@@ -108,12 +110,15 @@ def compute_correct_rate(grid_loss_list,threshold = 20):
             total_count += 1
             if item < threshold:
                 correct_count += 1
-    print('correct_rate:', correct_count / total_count)
+    if total_count == 0:
+        print('无正确图片')
+    else:
+        print('correct_rate:', correct_count / total_count, '数目为：',correct_count,'/',total_count)
 
 '''
 网格点损失大于10则去除
 '''
-def compute_average_grid_loss(grid_loss_list):
+def compute_average_grid_loss(grid_loss_list,threshold = 20):
 
     x_list= [0] * 10
 
@@ -132,8 +137,8 @@ def compute_average_grid_loss(grid_loss_list):
     if total_count == 0:
         print('出现错误，没有正确图片')
     else:
-        print('平均网格点损失:', total_loss / total_count, total_loss,total_count)
-    x_list = [x*1.0/total_count_all for x in x_list]  # 显示百分比
+        print('去除阈值外的平均网格点损失:', total_loss / total_count)
+        x_list = [x*1.0/total_count_all for x in x_list]  # 显示百分比
     return x_list
 
 
@@ -153,8 +158,23 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
     grid_loss_ntg_list = []
     grid_loss_comb_list = []
 
+    mutual_info_cnn_list = []
+    mutual_info_cvpr_list = []
+    mutual_info_ntg_list = []
+    mutual_info_comb_list = []
+
     ntg_loss_total = 0
     cnn_ntg_loss_total = 0
+
+    # iter_list = [100, 200, 300, 400, 500, 600]
+    iter_list = [1,10,30,50,100, 200, 300, 400, 500, 600,700,800]
+    print(iter_list)
+    grid_loss_dict = {}
+    grid_loss_traditional_dict = {}
+    for i in range(len(iter_list)):
+        dict_key = 'key' + str(iter_list[i])
+        grid_loss_dict[dict_key] = []
+        grid_loss_traditional_dict[dict_key] = []
 
     # batch {image.shape = }
     for batch_idx,batch in enumerate(dataloader):
@@ -179,10 +199,9 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         theta_GT_batch = pair_batch['theta_GT']
         image_name = pair_batch['name']
 
-        # sampling_grid = gridGen(theta_estimate_batch.view(-1,2,3))
-        # warped_image_batch = F.grid_sample(source_image_batch, sampling_grid)
         # warped_image_batch = affine_transform_pytorch(source_image_batch, theta_estimate_batch)
         # gt_image_batch = affine_transform_pytorch(source_image_batch, theta_GT_batch)
+        # cvpr_wraped_image = affine_transform_pytorch(source_image_batch, theta_cvpr_estimate_batch)
 
         # loss, g1xy, g2xy = loss_fn(target_image_batch, warped_image_batch)
         #print("one batch ntg:",loss.item())
@@ -197,8 +216,10 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         #visualize_compare_result(source_image_batch,target_image_batch,theta_GT_batch,theta_estimate_batch,use_cuda=use_cuda)
 
         # 显示多个epoch的折线图
-        #visualize_iter_result(source_image_batch,target_image_batch,theta_GT_batch,theta_estimate_batch,use_cuda=use_cuda)
-
+        # visualize_iter_result(source_image_batch[:, 0, :, :].unsqueeze(1),target_image_batch[:, 0, :, :].unsqueeze(1),
+        #                       theta_GT_batch,theta_estimate_batch,
+        #                       grid_loss_dict,grid_loss_traditional_dict,use_cuda=use_cuda)
+        # continue
 
         ## 计算网格点损失配准误差
         # 将pytorch的变换参数转为opencv的变换参数
@@ -208,25 +229,20 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         #ntg_param = estimate_param_batch(source_image_batch,target_image_batch,None,itermax=600)
         #ntg_param_pytorch = param2theta(ntg_param,240,240,use_cuda=use_cuda)
 
-        # print('使用串行ntg估计')
-        # cnn_ntg_param_batch_old = estimate_param_batch(source_image_batch, target_image_batch,
-        #                                                theta_opencv,itermax=800) # 旧版本的估计参数
-        # cnn_ntg_param_pytorch_batch_old = param2theta(cnn_ntg_param_batch_old, 240, 240, use_cuda=use_cuda)
-        # cnn_ntg_wraped_image_old = affine_transform_pytorch(source_image_batch, cnn_ntg_param_pytorch_batch_old)
-
         #print('使用并行ntg进行估计')
         with torch.no_grad():
 
             ntg_param_batch = estimate_aff_param_iterator(source_image_batch[:, 0, :, :].unsqueeze(1),
                                                               target_image_batch[:, 0, :, :].unsqueeze(1),
-                                                              None, use_cuda=use_cuda, itermax=600)
+                                                              None, use_cuda=use_cuda, itermax=900)
 
             cnn_ntg_param_batch = estimate_aff_param_iterator(source_image_batch[:,0,:,:].unsqueeze(1),
                                                               target_image_batch[:,0,:,:].unsqueeze(1),
-                                                              theta_opencv,use_cuda=use_cuda,itermax=600)
+                                                              theta_opencv,use_cuda=use_cuda,itermax=900)
         cnn_ntg_param_pytorch_batch = param2theta(cnn_ntg_param_batch, 240, 240, use_cuda=use_cuda)
         ntg_param_pytorch_batch = param2theta(ntg_param_batch, 240, 240, use_cuda=use_cuda)
         # cnn_ntg_wraped_image = affine_transform_pytorch(source_image_batch, cnn_ntg_param_pytorch_batch)
+        # ntg_wraped_image = affine_transform_pytorch(source_image_batch, ntg_param_pytorch_batch)
 
         # combine_loss, _, _ = loss_fn(target_image_batch, cnn_ntg_wraped_image)
 
@@ -239,17 +255,21 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         loss_ntg = fn_grid_loss.compute_grid_loss(ntg_param_pytorch_batch.detach(),theta_GT_batch)
         loss_cnn_ntg = fn_grid_loss.compute_grid_loss(cnn_ntg_param_pytorch_batch.detach(),theta_GT_batch)
 
-        grid_loss_ntg_list.append(loss_ntg.detach().cpu())
-        grid_loss_cnn_list.append(loss_cnn.detach().cpu())
-        grid_loss_comb_list.append(loss_cnn_ntg.detach().cpu())
-        grid_loss_cvpr_list.append(loss_cvpr_2018.detach().cpu())
+        grid_loss_ntg_list.append(loss_ntg.detach().cpu().numpy())
+        grid_loss_cnn_list.append(loss_cnn.detach().cpu().numpy())
+        grid_loss_comb_list.append(loss_cnn_ntg.detach().cpu().numpy())
+        grid_loss_cvpr_list.append(loss_cvpr_2018.detach().cpu().numpy())
 
         # vis.showImageBatch(source_image_batch,normailze=True,win='source_image_batch',title='source_image_batch')
         # vis.showImageBatch(target_image_batch,normailze=True,win='target_image_batch',title='target_image_batch')
         # vis.showImageBatch(warped_image_batch,normailze=True,win='warped_image_batch',title='cnn')
-        # # vis.showImageBatch(cnn_ntg_wraped_image_old,normailze=True,win='cnn_ntg_wraped_image_old',title='ntg_opencv')
         # vis.showImageBatch(cnn_ntg_wraped_image,normailze=True,win='cnn_ntg_wraped_image',title='ntg_pytorch')
         # vis.showImageBatch(gt_image_batch,normailze=True,win='gt_image_batch',title='gt_image_batch')
+
+        # mutual_info_cnn_list.append(calculate_mutual_info_batch(warped_image_batch,gt_image_batch))
+        # mutual_info_cvpr_list.append(calculate_mutual_info_batch(cvpr_wraped_image,gt_image_batch))
+        # mutual_info_ntg_list.append(calculate_mutual_info_batch(ntg_wraped_image,gt_image_batch))
+        # mutual_info_comb_list.append(calculate_mutual_info_batch(cnn_ntg_wraped_image,gt_image_batch))
 
         # print(image_name)
 
@@ -262,6 +282,26 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         # loss_cnn = grid_loss.compute_grid_loss(theta_estimate_batch,theta_GT_list)
         #
         # loss_cnn_ntg = grid_loss.compute_grid_loss(cnn_ntg_param,theta_GT_list)
+
+    # scio.savemat('grid_loss_dict800.mat',grid_loss_dict)
+    # scio.savemat('grid_loss_traditional_dict800.mat',grid_loss_traditional_dict)
+    # return
+
+    # scio.savemat('mutual_info_dict.mat', {'mutual_info_cnn_list':mutual_info_cnn_list,
+    #                                       'mutual_info_cvpr_list':mutual_info_cvpr_list,
+    #                                       'mutual_info_ntg_list':mutual_info_ntg_list,
+    #                                       'mutual_info_comb_list':mutual_info_comb_list})
+
+    grid_loss_ntg_array = np.array(grid_loss_ntg_list)
+    grid_loss_cnn_array = np.array(grid_loss_cnn_list)
+    grid_loss_comb_array = np.array(grid_loss_comb_list)
+    grid_loss_cvpr_array = np.array(grid_loss_cvpr_list)
+    scio.savemat('grid_loss_voc2011_test_iter900.mat', {'grid_loss_ntg_array': grid_loss_ntg_array,
+                                    'grid_loss_cvpr_array': grid_loss_cvpr_array,
+                                    'grid_loss_cnn_array': grid_loss_cnn_array,
+                                    'grid_loss_comb_array': grid_loss_comb_array
+                                              })
+
     print("网格点损失超过阈值的不计入平均值")
     print('ntg网格点损失')
     ntg_group_list = compute_average_grid_loss(grid_loss_ntg_list)
@@ -276,8 +316,8 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
     # vis.drawGridlossGroup(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
     #                       layout_title="nir_result",win='nir_result')
 
-    vis.drawGridlossBar(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
-                          layout_title="Grid_loss_histogram",win='Grid_loss_histogram')
+    # vis.drawGridlossBar(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
+    #                       layout_title="Grid_loss_histogram",win='Grid_loss_histogram')
     # vis.getVisdom().line(x_list,cnn_group_list)
     # vis.getVisdom().line(X=np.column_stack(x_list,x_list),
     #                      Y =np.column_stack(cnn_group_list,cnn_ntg_group_list))
@@ -312,15 +352,23 @@ def main():
 
     print("开始进行测试")
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/best_checkpoint_voc2011_NTG_resnet101.pth.tar"
-    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
+    # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_NTG_resnet101.pth.tar"
     # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar"
-    #ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_20r_NTG_resnet101.pth.tar"
+    # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_three_channel_paper_NTG_resnet101.pth.tar"
+    # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011/checkpoint_voc2011_20r_NTG_resnet101.pth.tar"
     # ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/checkpoint_NTG_resnet101.pth.tar'
-    #ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_voc2011_multi_gpu_three_channel_paper_origin_NTG_resnet101.pth.tar'
-    ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_coco2017_multi_gpu_paper30_NTG_resnet101.pth.tar'
+    ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_voc2011_multi_gpu_three_channel_paper_origin_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_coco2017_multi_gpu_paper30_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_coco2017_multi_gpu_paper30_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/checkpoint_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/checkpoint_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/home/zale/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/home/zale/project/registration_cnn_ntg/trained_weight/output/checkpoint_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar'
+    # ntg_checkpoint_path = "/home/zlk/project/registration_cnn_ntg/trained_weight/voc2011_paper_three/checkpoint_voc2011_paper_NTG_resnet101.pth.tar"
     #test_image_path = '/home/zlk/datasets/coco_test2017'
     test_image_path = '/home/zlk/datasets/coco_test2017_n2000'
 
@@ -329,7 +377,7 @@ def main():
     use_custom_aff_param = True
     print("use_custom_aff_param:",use_custom_aff_param)
     if use_custom_aff_param:
-        label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_30r_param.csv'
+        label_path = '../datasets/row_data/label_file/coco_test2017_n2000_custom_20r_param.csv'
     else:
         label_path = '../datasets/row_data/label_file/coco_test2017_paper_param_n2000.csv'
 
@@ -337,14 +385,14 @@ def main():
 
     print("label_path:",label_path)
 
-    threshold = 10
-    batch_size = 108
+    threshold = 3
+    batch_size = 96
     # 加载模型
     use_cuda = torch.cuda.is_available()
 
     vis = VisdomHelper(env_name='DMN_test')
 
-    ntg_model = createModel(ntg_checkpoint_path,use_cuda=use_cuda)
+    ntg_model = createModel(ntg_checkpoint_path,single_channel=False,use_cuda=use_cuda)
     cvpr_model = createCVPRModel(use_cuda=use_cuda)
 
     if eval_kind == 1:

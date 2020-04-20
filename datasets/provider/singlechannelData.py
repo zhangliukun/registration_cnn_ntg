@@ -90,7 +90,7 @@ class SingleChannelPairTnf(object):
     def __call__(self, batch):
         image_batch,theta_batch,image_name = batch['image'], batch['theta'],batch['name']
         indices_R = torch.tensor([0])
-        indices_G = torch.tensor([1])
+        indices_G = torch.tensor([2])
         if self.use_cuda:
             image_batch = image_batch.cuda()
             theta_batch = theta_batch.cuda()

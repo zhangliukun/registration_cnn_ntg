@@ -7,6 +7,7 @@ import torch
 from torch.autograd import Variable
 from torchvision import transforms
 
+from ntg_pytorch.register_func import scale_image
 from tnf_transform.transformation import AffineTnf
 
 # #def random_affine(img= None,degrees=20,translate=.2,scale=.2,shear=10):
@@ -77,9 +78,9 @@ def random_affine(img= None,degrees=5,translate=.05,scale=.05,shear=3,to_dict = 
 
     return theta
 
-def generate_affine_param(degree=0,translate_x=0,translate_y=0,scale=0,shear=0,to_dict=False):
+def generate_affine_param(degree=0,translate_x=0,translate_y=0,scale=0,shear=0,center=(0,0),to_dict=False):
     R = np.eye(3)
-    R[:2] = cv2.getRotationMatrix2D(angle=degree,center=(0,0),scale=scale)
+    R[:2] = cv2.getRotationMatrix2D(angle=degree,center=center,scale=scale)
 
     T = np.eye(3)
     T[0,2] = translate_x
@@ -184,6 +185,8 @@ class NormalizeImage:
         return sample
 
 
+
+
 class NormalizeImageDict:
     """
     Normalizes Tensor images in dictionary
@@ -207,6 +210,46 @@ class NormalizeImageDict:
                 sample[key] /= 255.0
             sample[key] = self.normalize_single_channel(sample[key])
         return sample
+
+class NormalizeCAVEDict:
+
+    def __init__(self, image_keys):
+        self.image_keys = image_keys
+
+    def __call__(self, sample):
+        for key in self.image_keys:
+            I_max_batch = torch.max(sample[key].view(-1,31),0)[0].unsqueeze(0).unsqueeze(0)
+            I_min_batch = torch.min(sample[key].view(-1,31),0)[0].unsqueeze(0).unsqueeze(0)
+            sample[key] = scale_image(sample[key], I_min_batch, I_max_batch)
+
+            I_mean_batch = torch.mean(sample[key].view(-1,31),0)[0].unsqueeze(0).unsqueeze(0)
+            I_std_batch = torch.std(sample[key].view(-1,31),0)[0].unsqueeze(0).unsqueeze(0)
+            sample[key] = (sample[key] - I_mean_batch)/I_std_batch
+
+        return sample
+
+    def scale_image_batch(self,image_batch):
+        batch_size = image_batch.shape[0]
+        I_max_batch = torch.max(image_batch.view(batch_size, 1, -1), 2)[0].unsqueeze(2).unsqueeze(2)
+        I_min_batch = torch.min(image_batch.view(batch_size, 1, -1), 2)[0].unsqueeze(2).unsqueeze(2)
+
+        scale_image_batch = scale_image(image_batch, I_min_batch, I_max_batch)
+        return scale_image_batch
+
+    def normalize_image_batch(self,image_batch):
+        '''
+        :param image_batch: [batch,channel,h,w]
+        :return:
+        '''
+        batch_size = image_batch.shape[0]
+        scale_image_batch = self.scale_image_batch(image_batch)
+
+        I_mean_batch = torch.mean(scale_image_batch.view(batch_size,1,-1), 2).unsqueeze(2).unsqueeze(2)
+        I_std_batch = torch.std(scale_image_batch.view(batch_size,1,-1), 2).unsqueeze(2).unsqueeze(2)
+
+        normalized_image_batch = (scale_image_batch - I_mean_batch)/I_std_batch
+        return normalized_image_batch
+
 
 def normalize_image_simple(image,forward=True):
 

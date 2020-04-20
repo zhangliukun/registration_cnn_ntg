@@ -68,7 +68,7 @@ class GridLoss:
     def __init__(self,use_cuda,grid_size=240):
         # 定义将要被变换的虚拟网格
         #self.axis_coords = np.linspace(-1,1,grid_size)
-        self.axis_coords = np.linspace(0,240,grid_size)
+        self.axis_coords = np.linspace(0,grid_size,grid_size)
         self.N = grid_size*grid_size
         X,Y = np.meshgrid(self.axis_coords,self.axis_coords)
         X = np.reshape(X,(1,1,self.N))

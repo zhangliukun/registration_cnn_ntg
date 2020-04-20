@@ -1,6 +1,7 @@
 import time
 
 from evluate.lossfunc import GridLoss
+from ntg_pytorch.register_func import estimate_aff_param_iterator
 from tnf_transform.transformation import affine_transform_pytorch, affine_transform_opencv
 from util.matplot_util import plot_line_chart
 from util.pytorchTcv import theta2param, param2theta
@@ -8,6 +9,8 @@ from util.time_util import calculate_diff_time
 from traditional_ntg.estimate_affine_param import estimate_param_batch
 from visualization.matplot_tool import plot_batch_result, plot_matual_information_batch_result, plot_grid_loss_batch
 import matplotlib.pyplot as plt
+import scipy.io as scio
+import numpy as np
 
 def visualize_cnn_result(source_image_batch,target_image_batch,small_warped_iamge_batch,theta_estimate_batch,vis):
     # P3使用CNN配准的结果
@@ -49,13 +52,14 @@ def visualize_compare_result(source_image_batch,target_image_batch,theta_GT_batc
 '''
 可视化各个迭代次数以后的结果
 '''
-def visualize_iter_result(source_image_batch,target_image_batch,theta_GT_batch,theta_estimate_batch,use_cuda=True):
+def visualize_iter_result(source_image_batch,target_image_batch,theta_GT_batch,theta_estimate_batch,
+                          grid_loss_dict,grid_loss_traditional_dict,use_cuda=True):
     theta_opencv = theta2param(theta_estimate_batch.view(-1, 2, 3), 240, 240, use_cuda=use_cuda)
 
     grid_loss = GridLoss(use_cuda=use_cuda)
     # 使用传统ntg方法的结果
     # iter_list = [300,600,1000,1500,2000]
-    iter_list = [100,200,300,400,500,600]
+
     #iter_list = [100,200]
 
     # 归一化互信息数据
@@ -64,35 +68,48 @@ def visualize_iter_result(source_image_batch,target_image_batch,theta_GT_batch,t
     # matual_info_list_batch = []
     # matual_info_traditional_list_batch = []
 
-    grid_loss_batch = []
-    grid_loss_triditional_batch = []
+    # grid_loss_batch = []
+    # grid_loss_triditional_batch = []
 
-    result_batch= []
+    # iter_list = [100, 200, 300, 400, 500, 600]
+    iter_list = [1,10,30,50,100, 200, 300, 400, 500, 600,700,800]
+    # grid_loss_dict = {}
+    # grid_loss_traditional_dict = {}
+    # for i in range(len(iter_list)):
+    #     dict_key = 'key' + str(iter_list[i])
+    #     grid_loss_dict[dict_key] = []
+    #     grid_loss_traditional_dict[dict_key] = []
+
+    # result_batch= []
     for i in range(len(iter_list)):
 
         start_time = time.time()
-        ntg_param_opencv_batch = estimate_param_batch(source_image_batch, target_image_batch,theta_opencv,iter_list[i])
+        ntg_param_opencv_batch = estimate_aff_param_iterator(source_image_batch, target_image_batch,theta_opencv,use_cuda=use_cuda,itermax=iter_list[i])
         elpased1 = calculate_diff_time(start_time)
 
         start_time = time.time()
-        ntg_param_opencv_batch_traditional = estimate_param_batch(source_image_batch, target_image_batch,None,iter_list[i])
+        ntg_param_opencv_batch_traditional = estimate_aff_param_iterator(source_image_batch, target_image_batch,None,use_cuda=use_cuda,itermax=iter_list[i])
         elpased2 = calculate_diff_time(start_time)
-        print('使用ntg方法',str(len(source_image_batch))+'对图片用时:','有初值:',str(elpased1),'无初值:',str(elpased2))
+        # print('使用ntg方法',str(len(source_image_batch))+'对图片用时:','有初值:',str(elpased1),'无初值:',str(elpased2))
 
 
         ntg_param_pytorch_batch = param2theta(ntg_param_opencv_batch,240,240,use_cuda=use_cuda)
         ntg_param_pytorch_batch_traditional = param2theta(ntg_param_opencv_batch_traditional,240,240,use_cuda=use_cuda)
 
-        ntg_image_warped_batch = affine_transform_pytorch(source_image_batch, ntg_param_pytorch_batch)
-        ntg_image_warped_triditional_batch = affine_transform_pytorch(source_image_batch, ntg_param_pytorch_batch_traditional)
+        # ntg_image_warped_batch = affine_transform_pytorch(source_image_batch, ntg_param_pytorch_batch)
+        # ntg_image_warped_triditional_batch = affine_transform_pytorch(source_image_batch, ntg_param_pytorch_batch_traditional)
         # 只绘制最后的结果
-        if i == len(iter_list)-1:
-            result_batch.append(ntg_image_warped_triditional_batch)
-            result_batch.append(ntg_image_warped_batch)
+        # if i == len(iter_list)-1:
+        #     result_batch.append(ntg_image_warped_triditional_batch)
+        #     result_batch.append(ntg_image_warped_batch)
 
         #print(str(iter_list[i])+''+str(grid_loss.compute_grid_loss(ntg_param_opencv_batch,theta_GT_batch)))
-        grid_loss_batch.append(grid_loss.compute_grid_loss(ntg_param_pytorch_batch,theta_GT_batch).numpy())
-        grid_loss_triditional_batch.append(grid_loss.compute_grid_loss(ntg_param_pytorch_batch_traditional,theta_GT_batch).numpy())
+        # grid_loss_batch.append(grid_loss.compute_grid_loss(ntg_param_pytorch_batch,theta_GT_batch).numpy())
+        # grid_loss_triditional_batch.append(grid_loss.compute_grid_loss(ntg_param_pytorch_batch_traditional,theta_GT_batch).numpy())
+
+        dict_key = 'key'+str(iter_list[i])
+        grid_loss_dict[dict_key].append(grid_loss.compute_grid_loss(ntg_param_pytorch_batch,theta_GT_batch).detach().cpu().numpy())
+        grid_loss_traditional_dict[dict_key].append(grid_loss.compute_grid_loss(ntg_param_pytorch_batch_traditional,theta_GT_batch).detach().cpu().numpy())
 
         # 画归一化互信息折线图用
         # for i in range(len(target_image_batch)):
@@ -113,20 +130,28 @@ def visualize_iter_result(source_image_batch,target_image_batch,theta_GT_batch,t
         #       metrics.normalized_mutual_info_score(target_image_batch[1].view(-1),ntg_image_warped_batch[1].view(-1)))
         # 取消使用归一化互信息
 
-    plot_title = ["source","target"]
+    # return grid_loss_dict,grid_loss_traditional_dict
+    # for i in range(len(iter_list)):
+    #     grid_loss_dict[str(iter_list[i])] = np.squeeze(np.array(grid_loss_dict[str(iter_list[i])]))
+    #     grid_loss_traditional_dict[str(iter_list[i])] = np.squeeze(np.array(grid_loss_traditional_dict[str(iter_list[i])]))
+
+    # scio.savemat('grid_loss_dict.mat',grid_loss_dict)
+    # scio.savemat('grid_loss_traditional_dict.mat',grid_loss_traditional_dict)
+
+    # plot_title = ["source","target"]
     # 将迭代次数画出来
     # for i in range(len(iter_list)):
     #     plot_title.append("iter"+str(iter_list[i]))
 
     # 将最后的结果对比画出来
-    plot_title.append('ntg_traditional')
-    plot_title.append('ntg_cnn_comb')
+    # plot_title.append('ntg_traditional')
+    # plot_title.append('ntg_cnn_comb')
     # plot_matual_information_batch_result(source_image_batch,target_image_batch,*result_batch,plot_title=plot_title,
     #                                      matual_info_list_batch= matual_info_list_batch,
     #                                      matual_info_traditional_list_batch=matual_info_traditional_list_batch,iter_list=iter_list)
 
-    plot_grid_loss_batch(source_image_batch, target_image_batch, *result_batch, plot_title=plot_title,grid_loss_batch = grid_loss_batch,
-                         grid_loss_trditional_batch = grid_loss_triditional_batch,iter_list=iter_list)
+    # plot_grid_loss_batch(source_image_batch, target_image_batch, *result_batch, plot_title=plot_title,grid_loss_batch = grid_loss_batch,
+    #                      grid_loss_trditional_batch = grid_loss_triditional_batch,iter_list=iter_list)
 
 
 def visualize_spec_epoch_result(source_image_batch,target_image_batch,theta_GT_batch,theta_estimate_batch,use_cuda=True):

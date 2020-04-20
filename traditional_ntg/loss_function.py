@@ -23,8 +23,15 @@ def deriv_filt(I,isconj):
         h1 = np.array([0.5, 0, -0.5])
         h2 = np.array([[0.5], [0], [-0.5]])
 
-    Iy = cv2.filter2D(I,-1,h1)
-    Ix = cv2.filter2D(I,-1,np.transpose(h2))
+    # Ix是上下减，得到横向的线条，左右pad上下减后为0。Iy是左右减，得到纵向的线条
+    # 使用这个自动将负的值变为0，将小数向上取整
+    # 对于0到1的浮点数不会进行取整变0操作，浮点数还是按照原来的方法进行卷积
+    # print('reflect') 这里的bodertype不会影响最后结果
+    # Iy = cv2.filter2D(I,-1,h1, borderType=cv2.BORDER_REFLECT)
+    # Ix = cv2.filter2D(I,-1,np.transpose(h2), borderType=cv2.BORDER_REFLECT)
+    #
+    Iy = cv2.filter2D(I, -1, h1)
+    Ix = cv2.filter2D(I, -1, np.transpose(h2))
 
     return Ix,Iy
 
@@ -41,6 +48,7 @@ def deriv_filt(I,isconj):
 def affine_transform(im,p):
     height = im.shape[0]
     width = im.shape[1]
+    # im = cv2.warpAffine(im,p,(width,height),flags=cv2.INTER_CUBIC)
     im = cv2.warpAffine(im,p,(width,height))
     return im
 
@@ -48,21 +56,21 @@ def affine_transform(im,p):
 def partial_deriv_affine(I1,I2,p,h):
 
     [H,W] = I1.shape
-    x,y = np.meshgrid(range(0,W),range(0,H))
-    x2 = p[0,0] * x + p[0,1]*y + p[0,2]
-    y2 = p[1,0] * x + p[1,1]*y + p[1,2]
-    B = (x2 > W-1) | (x2 < 0) | (y2 > H-1) | (y2 < 0)
+    # x,y = np.meshgrid(range(0,W),range(0,H))
+    # x2 = p[0,0] * x + p[0,1]*y + p[0,2]
+    # y2 = p[1,0] * x + p[1,1]*y + p[1,2]
+    # B = (x2 > W-1) | (x2 < 0) | (y2 > H-1) | (y2 < 0)
 
-    warpI2 = cv2.warpAffine(I2,p,(I2.shape[1],I2.shape[0]))
+    warpI2 = cv2.warpAffine(I2,p,(I2.shape[1],I2.shape[0]),flags=cv2.INTER_CUBIC)
     I2x,I2y = deriv_filt(I2,False)
 
-    Ipx = cv2.warpAffine(I2x,p,(I2x.shape[1],I2x.shape[0]))
-    Ipy = cv2.warpAffine(I2y,p,(I2y.shape[1],I2y.shape[0]))
+    Ipx = cv2.warpAffine(I2x,p,(I2x.shape[1],I2x.shape[0]),flags=cv2.INTER_CUBIC)
+    Ipy = cv2.warpAffine(I2y,p,(I2y.shape[1],I2y.shape[0]),flags=cv2.INTER_CUBIC)
     It = warpI2 - I1
 
-    It[B] = 0
-    Ipx[B] = 0
-    Ipy[B] = 0
+    # It[B] = 0
+    # Ipx[B] = 0
+    # Ipy[B] = 0
     return It,Ipx,Ipy
 
 def func_rho(x,order,epsilon=0.01):

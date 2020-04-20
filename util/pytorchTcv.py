@@ -59,3 +59,14 @@ def theta2param(theta,w,h,use_cuda=True):
     opencv_param = torch.inverse(square_matrix)[:,0:2,:]
     return opencv_param
 
+def inverse_theta(theta,use_cuda=True):
+    if not isinstance(theta, torch.Tensor):
+        theta = torch.from_numpy(theta).float()
+    third_row = torch.zeros((theta.shape[0], 1, 3))
+    if use_cuda:
+        third_row = third_row.cuda()
+
+    third_row[:, :, 2] = 1
+    square_matrix = torch.cat((theta,third_row),1)
+    opencv_param = torch.inverse(square_matrix)[:,0:2,:]
+    return opencv_param

@@ -14,7 +14,7 @@ from skimage import io
 from util.time_util import calculate_diff_time
 
 # 使用传统方法进行优化
-def estimate_param_batch(source_image_batch,target_image_batch,theta_opencv_batch=None,itermax = 500):
+def estimate_param_batch(source_image_batch,target_image_batch,theta_opencv_batch=None,itermax = 800):
     '''
     :param source_image_batch: Tensor[batch_size,C,h,w]
     :param target_image_batch: Tensor[batch_size,C,h,w]

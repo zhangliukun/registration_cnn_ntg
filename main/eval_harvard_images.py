@@ -32,7 +32,7 @@ import torch.nn.functional as F
 from visualization.train_visual import VisdomHelper
 
 
-def createDataloader(image_path,batch_size = 16,use_cuda=True):
+def createDataloader(image_path,batch_size = 16,use_cuda=True,single_channel=False):
     '''
     创建dataloader
     :param image_path:
@@ -44,7 +44,7 @@ def createDataloader(image_path,batch_size = 16,use_cuda=True):
     # dataset = HarvardData(image_path,label_path,transform=NormalizeImageDict(["image"]))
     dataset = HarvardData(image_path)
     dataloader = DataLoader(dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
-    pair_generator = HarvardDataPair()
+    pair_generator = HarvardDataPair(single_channel=single_channel)
 
     return dataloader,pair_generator
 
@@ -81,11 +81,10 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
 
         pair_batch = pair_generator(batch)  # image[batch_size,1,w,h] theta_GT[batch_size,2,3]
 
-
-
         theta_estimate_batch = ntg_model(pair_batch)  # theta [batch_size,6]
 
-        theta_cvpr_estimate_batch = cvpr_model(pair_batch)
+        if cvpr_model is not None:
+            theta_cvpr_estimate_batch = cvpr_model(pair_batch)
 
         source_image_batch = pair_batch['source_image']
         target_image_batch = pair_batch['target_image']
@@ -113,7 +112,7 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         cnn_wraped_image = affine_transform_pytorch(source_image_batch, theta_estimate_batch)
         GT_image = affine_transform_pytorch(source_image_batch, theta_GT_batch)
 
-        loss_cvpr_2018 = fn_grid_loss.compute_grid_loss(theta_cvpr_estimate_batch,theta_GT_batch)
+        # loss_cvpr_2018 = fn_grid_loss.compute_grid_loss(theta_cvpr_estimate_batch,theta_GT_batch)
         loss_cnn = fn_grid_loss.compute_grid_loss(theta_estimate_batch.detach(),theta_GT_batch)
         loss_ntg = fn_grid_loss.compute_grid_loss(ntg_param_pytorch_batch.detach(),theta_GT_batch)
         loss_cnn_ntg = fn_grid_loss.compute_grid_loss(cnn_ntg_param_pytorch_batch.detach(),theta_GT_batch)
@@ -129,7 +128,7 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         grid_loss_ntg_list.append(loss_ntg.detach().cpu())
         grid_loss_cnn_list.append(loss_cnn.detach().cpu())
         grid_loss_comb_list.append(loss_cnn_ntg.detach().cpu())
-        grid_loss_cvpr_list.append(loss_cvpr_2018.detach().cpu())
+        # grid_loss_cvpr_list.append(loss_cvpr_2018.detach().cpu())
 
     print("网格点损失超过阈值的不计入平均值")
     print('ntg网格点损失')
@@ -139,12 +138,12 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
     print('cnn_ntg网格点损失')
     cnn_ntg_group_list = compute_average_grid_loss(grid_loss_comb_list)
     print('cvpr网格点损失')
-    cvpr_group_list = compute_average_grid_loss(grid_loss_cvpr_list)
+    # cvpr_group_list = compute_average_grid_loss(grid_loss_cvpr_list)
 
     x_list = [i for i in range(10)]
 
-    vis.drawGridlossBar(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
-                          layout_title="Grid_loss_histogram",win='Grid_loss_histogram')
+    # vis.drawGridlossBar(x_list,ntg_group_list,cnn_group_list,cnn_ntg_group_list,cvpr_group_list,
+    #                       layout_title="Grid_loss_histogram",win='Grid_loss_histogram')
 
     print("计算CNN平均NTG值",ntg_loss_total / len(dataloader))
     print("计算CNN+NTG平均NTG值",cnn_ntg_loss_total / len(dataloader))
@@ -156,31 +155,33 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
     compute_correct_rate(grid_loss_cnn_list,threshold=threshold)
     print('cnn+ntg 正确率')
     compute_correct_rate(grid_loss_comb_list,threshold=threshold)
-    print('cvpr正确率')
-    compute_correct_rate(grid_loss_cvpr_list, threshold=threshold)
+    # print('cvpr正确率')
+    # compute_correct_rate(grid_loss_cvpr_list, threshold=threshold)
 
 def main():
 
-
+    single_channel = False
     print("开始进行测试")
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     ntg_checkpoint_path = '/mnt/4T/zlk/trained_weights/best_checkpoint_coco2017_multi_gpu_paper30_NTG_resnet101.pth.tar'
     #test_image_path = '/home/zlk/datasets/coco_test2017'
-    test_image_path = '/mnt/4T/zlk/datasets/mulitspectral/Harvard'
+    # test_image_path = '/mnt/4T/zlk/datasets/mulitspectral/Harvard'
+    test_image_path = '/mnt/4T/zlk/datasets/mulitspectral/complete_ms_data_mat'
 
-    threshold = 10
+    threshold = 3
     batch_size = 1
     # 加载模型
     use_cuda = torch.cuda.is_available()
 
-    vis = VisdomHelper(env_name='Harvard_test')
+    # vis = VisdomHelper(env_name='Harvard_test')
+    vis = VisdomHelper(env_name='CAVE_test')
 
-    ntg_model = createModel(ntg_checkpoint_path,use_cuda=use_cuda)
+    ntg_model = createModel(ntg_checkpoint_path,use_cuda=use_cuda,single_channel=single_channel)
     cvpr_model = createCVPRModel(use_cuda=use_cuda)
 
     print('测试harvard网格点损失')
-    dataloader,pair_generator =  createDataloader(test_image_path,batch_size,use_cuda = use_cuda)
+    dataloader,pair_generator =  createDataloader(test_image_path,batch_size,use_cuda = use_cuda,single_channel=single_channel)
 
     iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=threshold,use_cuda=use_cuda)
 

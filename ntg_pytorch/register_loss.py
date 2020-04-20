@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import torch.nn as nn
 
-from tnf_transform.transformation import affine_transform_pytorch
+from tnf_transform.transformation import affine_transform_pytorch, affine_transform_opencv, \
+    affine_transform_opencv_batch
+from traditional_ntg.loss_function import deriv_filt
 from util.pytorchTcv import param2theta
-
 
 def ntg_gradient_torch(objdict,p,use_cuda = False):
     options = objdict['parser']
@@ -17,30 +18,21 @@ def ntg_gradient_torch(objdict,p,use_cuda = False):
     p_pytorch = param2theta(p, source_image_batch.shape[2], source_image_batch.shape[3], use_cuda=use_cuda)
     warpI = affine_transform_pytorch(source_image_batch, p_pytorch)
 
+    # 结果不如使用pytorch的
+    # warpI = affine_transform_opencv_batch(source_image_batch,p,use_cuda=use_cuda)
+
     batch, c, h, w = source_image_batch.shape
-    x = objdict['W_array']
-    y = objdict['H_array']
-    x2 = p[:, 0, 0].reshape(batch,c,1,1) * x + p[:, 0, 1].reshape(batch,c,1,1) * y + p[:, 0, 2].reshape(batch,c,1,1)
-    y2 = p[:, 1, 0].reshape(batch,c,1,1) * x + p[:, 1, 1].reshape(batch,c,1,1) * y + p[:, 1, 2].reshape(batch,c,1,1)
 
-    B = (x2 > w - 1) | (x2 < 0) | (y2 > h - 1) | (y2 < 0)
+    # I_source_x,I_source_y = deriv_filt_pytorch(source_image_batch, False, use_cuda)
+    # Ipx = affine_transform_opencv_batch(I_source_x,p,use_cuda=use_cuda)
+    # Ipy = affine_transform_opencv_batch(I_source_y,p,use_cuda=use_cuda)
 
+    # Ipx = affine_transform_pytorch(I_source_x,p_pytorch)
+    # Ipy = affine_transform_pytorch(I_source_y,p_pytorch)
+
+    # 直接使用变换图像的梯度不如使用梯度图进行变换精度高
     Ipx, Ipy = deriv_filt_pytorch(warpI, False, use_cuda)
     It = warpI - target_image_batch
-
-    Ipx[B] = 0
-    Ipy[B] = 0
-    It[B] = 0
-
-    # plt.figure()
-    # plt.imshow(warpI[0].squeeze(), cmap=plt.cm.gray_r)
-    # plt.figure()
-    # plt.imshow(It[0].squeeze(), cmap=plt.cm.gray_r)
-    # plt.figure()
-    # plt.imshow(Ipx[0].squeeze(), cmap=plt.cm.gray_r)
-    # plt.figure()
-    # plt.imshow(Ipy[0].squeeze(), cmap=plt.cm.gray_r)
-    # plt.show()
 
     J = compute_ntg_pytorch(target_image_batch, warpI, use_cuda)
 
@@ -51,14 +43,6 @@ def ntg_gradient_torch(objdict,p,use_cuda = False):
 
     [wxx, wxy] = deriv_filt_pytorch(rho_x, True, use_cuda)
     [wyx, wyy] = deriv_filt_pytorch(rho_y, True, use_cuda)
-
-    # plt.figure()
-    # plt.imshow(wxx[0].squeeze(), cmap=plt.cm.gray_r)
-    #
-    # plt.figure()
-    # plt.imshow(wyy[0].squeeze(), cmap=plt.cm.gray_r)
-    #
-    # plt.show()
 
     w = wxx + wyy
 
@@ -98,6 +82,12 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
     :param isconj:
     :return:
     '''
+    # I = I.squeeze().numpy()
+    # Ix,Iy = deriv_filt(I,isconj)
+    # Ix = torch.Tensor(Ix).unsqueeze(0).unsqueeze(0)
+    # Iy = torch.Tensor(Iy).unsqueeze(0).unsqueeze(0)
+    #
+    # return Ix,Iy
 
     batch,channel,h,w = I.shape
     if not isconj:
@@ -128,11 +118,26 @@ def deriv_filt_pytorch(I,isconj,use_cuda=False):
 
     ## 注意！不同的mode导致的结果也不一样
     # 这里的groups是使用了分组卷积，相当于使用每个channel对滤波核进行操作，加了以后能够处理多通道如RGB图片
-    Ix = F.conv2d(I,kernel_x,padding=0,groups=channel) # 上下为0
-    Iy = F.conv2d(I,kernel_y,padding=0,groups=channel) # 左右为0
+    # 和cv2.filter2D不一样，这里的直接就是计算，没有后续处理。
+    # 按照0填充,这个和opencv的filter2D的处理方式一样
+    # Ix_pad = F.pad(I,(1,1,0,0),mode='replicate')
+    # Iy_pad = F.pad(I,(0,0,1,1),mode='replicate')
 
-    Ix = F.pad(Ix,(1,1,0,0),mode='reflect')
-    Iy = F.pad(Iy,(0,0,1,1),mode='reflect')
+    Ix_pad = F.pad(I,(1,1,0,0),mode='reflect')
+    Iy_pad = F.pad(I,(0,0,1,1),mode='reflect')
+
+
+    Ix = F.conv2d(Ix_pad,kernel_x,padding=0,groups=channel) # 上下为0
+    Iy = F.conv2d(Iy_pad,kernel_y,padding=0,groups=channel) # 左右为0
+
+
+    # 这个pad操作很影响最后的结果
+    # Ix = F.pad(Ix,(1,1,0,0),mode='reflect')
+    # Iy = F.pad(Iy,(0,0,1,1),mode='reflect')
+
+
+    # Ix = torch.max(Ix,torch.Tensor([0]))
+    # Iy = torch.max(Iy,torch.Tensor([0]))
 
     # Ix = F.pad(Ix,(1,1,0,0),mode='circular')
     # Iy = F.pad(Iy,(0,0,1,1),mode='circular')

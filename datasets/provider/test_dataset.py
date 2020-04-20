@@ -126,7 +126,9 @@ class NtgTestPair(object):
         b, c, h, w = image_batch.size()
 
         # 为较大的采样区域生成对称填充图像
-        image_batch = symmetricImagePad(image_batch, self.padding_factor,use_cuda=self.use_cuda)
+        # image_batch = symmetricImagePad(image_batch, self.padding_factor,use_cuda=self.use_cuda)
+        self.crop_factor = 1.0
+        self.padding_factor = 1.0
 
         indices_R = torch.tensor([0])
         indices_G = torch.tensor([2])

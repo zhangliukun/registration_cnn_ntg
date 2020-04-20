@@ -132,7 +132,7 @@ class VisdomHelper:
         # self.vis.images(image_batch[0:show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
         self.vis.images(image_batch[start_index:start_index+show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
 
-    def showHarvardBatch(self,image_batch,win='image',title='image',normailze=False,show_num=8,start_index = 17):
+    def showHarvardBatch(self,image_batch,win='image',title='image',normailze=False,show_num=8,start_index = 0):
         if normailze:
             image_batch = normalize_image(image_batch, forward=False)
             image_batch = torch.clamp(image_batch, 0, 1)
