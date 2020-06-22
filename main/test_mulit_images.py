@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import scipy.io as scio
 
-from cvpr2018code.cnn_geometric_model import CNNGeometric
+from cnn_geometric.cnn_geometric_model import CNNGeometric
 from datasets.provider.nirrgbData import NirRgbData, NirRgbTnsPair
 from datasets.provider.randomTnsData import RandomTnsPair, RandomTnsPairSingleChannelTest
 from datasets.provider.singlechannelData import SinglechannelData, SingleChannelPairTnf

@@ -8,7 +8,7 @@ import cv2
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
-from cvpr2018code.cnn_geometric_model import CNNGeometric
+from cnn_geometric.cnn_geometric_model import CNNGeometric
 from datasets.provider.harvardData import HarvardData, HarvardDataPair
 from datasets.provider.nirrgbData import NirRgbData, NirRgbTnsPair
 from datasets.provider.randomTnsData import RandomTnsPair, RandomTnsPairSingleChannelTest
