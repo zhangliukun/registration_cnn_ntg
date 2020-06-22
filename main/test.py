@@ -89,8 +89,11 @@ if __name__ == '__main__':
 
     use_cuda = torch.cuda.is_available()
     # source_image_path = '../datasets/row_data/multispectral/Ir.jpg'
-    source_image_path = '../datasets/row_data/multispectral/source.jpg'
+    # source_image_path = '../datasets/row_data/multispectral/source.jpg'
     # target_image_path = '../datasets/row_data/multispectral/It.jpg'
-    target_image_path = '../datasets/row_data/multispectral/target.jpg'
+    # target_image_path = '../datasets/row_data/multispectral/target.jpg'
+
+    source_image_path = io.imread('../datasets/row_data/texs1.jpeg')
+    target_image_path = io.imread('../datasets/row_data/test2.jpeg')
 
     register_images(source_image_path,target_image_path,use_cuda)

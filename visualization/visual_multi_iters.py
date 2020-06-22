@@ -77,8 +77,10 @@ def visual_iters():
     plot_title = ''
     type3 = plot_line_chart(iter_list, np.mean(grid_loss_traditional_array, 1), title=plot_title, color='r', label='NTG')
     type4 = plot_line_chart(iter_list, np.mean(grid_loss_array, 1), title=plot_title, color='g', label='MIRUN-H')
-    xlabel = '迭代次数'
-    ylabel = '平均网格点损失（pixels）'
+    # xlabel = '迭代次数'
+    # ylabel = '平均网格点损失（pixels）'
+    xlabel = 'Number of iterations'
+    ylabel = 'Grid loss (pixels)'
     plt.xlabel(xlabel,fontsize=15)
     plt.ylabel(ylabel,fontsize=15)
 
@@ -86,13 +88,15 @@ def visual_iters():
 
     y_scatter = np.mean(grid_loss_traditional_array, 1).tolist()
     y_scatter = y_scatter[0:1]+y_scatter[4:12]
-    type1 = plt.scatter(x_scatter,y_scatter,c='r',label='NTG 成功率（<1pixel）')
+    # type1 = plt.scatter(x_scatter,y_scatter,c='r',label='NTG 成功率（<1pixel）')
+    type1 = plt.scatter(x_scatter,y_scatter,c='r',label='NTG success rate (<1pixel)')
     for i in range(len(cnn_ntg_correct_rate)):
         plt.annotate("%.1f"%(ntg_correct_rate[i]*100)+"%",(x_scatter[i]+10,y_scatter[i]+0.5))
 
     y_scatter = np.mean(grid_loss_array, 1).tolist()
     y_scatter = y_scatter[0:1]+y_scatter[4:12]
-    type2 = plt.scatter(x_scatter,y_scatter,c='g',label='MIRUN-H 成功率（<1pixel）')
+    # type2 = plt.scatter(x_scatter,y_scatter,c='g',label='MIRUN-H 成功率（<1pixel）')
+    type2 = plt.scatter(x_scatter,y_scatter,c='g',label='MIRUN-H success rate (<1pixel)')
     for i in range(len(cnn_ntg_correct_rate)):
         plt.annotate("%.1f"%(cnn_ntg_correct_rate[i]*100)+"%",(x_scatter[i]+10,y_scatter[i]+0.5))
 
@@ -232,8 +236,10 @@ def visual_grid_loss_bar():
     for i in range(len(x)):
         x[i] = x[i] + width
     plt.bar(x, comb_bar, width=width, label='MIRUN-H', fc='g',)
-    plt.xlabel('平均网格点损失（pixels）',fontsize=15)
-    plt.ylabel('样本比例',fontsize=15)
+    # plt.xlabel('平均网格点损失（pixels）',fontsize=15)
+    # plt.ylabel('样本比例',fontsize=15)
+    plt.xlabel('Grid loss (pixels)',fontsize=15)
+    plt.ylabel('Ratio of samples',fontsize=15)
 
     plt.legend()
     plt.grid()
@@ -245,6 +251,6 @@ def visual_grid_loss_bar():
 
 
 if __name__ == '__main__':
-    # visual_iters()
-    visual_grid_loss_bar()
+    visual_iters()
+    # visual_grid_loss_bar()
     # count_mean_iters()

@@ -42,8 +42,11 @@ if __name__ == '__main__':
     # img1 = io.imread('../datasets/row_data/multispectral/fake_and_real_tomatoes_ms_31.png') * 1.0
     # img2 = io.imread('../datasets/row_data/multispectral/fake_and_real_tomatoes_ms_17.png') * 1.0
 
-    img1 = io.imread('../datasets/row_data/multispectral/mul_1s_s.png')
-    img2 = io.imread('../datasets/row_data/multispectral/mul_1t_s.png')
+    # img1 = io.imread('../datasets/row_data/multispectral/mul_1s_s.png')
+    # img2 = io.imread('../datasets/row_data/multispectral/mul_1t_s.png')
+
+    img1 = io.imread('../datasets/row_data/texs1.jpeg')
+    img2 = io.imread('../datasets/row_data/test2.jpeg')
 
     center = (img1.shape[0]/2,img1.shape[1]/2)
     center = (0,0)

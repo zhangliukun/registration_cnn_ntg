@@ -22,6 +22,9 @@ from PIL import Image
 img1 = io.imread('../datasets/row_data/multispectral/fake_and_real_tomatoes_ms_17.png')
 img2 = io.imread('../datasets/row_data/multispectral/fake_and_real_tomatoes_ms_28.png')
 
+# img1 = io.imread('../datasets/row_data/texs1.jpeg')
+# img2 = io.imread('../datasets/row_data/test2.jpeg')
+
 fn_grid_loss = GridLoss(use_cuda=False,grid_size=512)
 
 center = (256,256)
