@@ -91,7 +91,7 @@ def main(args):
     #     collate_fn=utils.collate_fn)
 
     print("Creating model")
-    model = CNNRegistration(use_cuda=use_cuda)
+    model = CNNRegistration(use_cuda=use_cuda,single_channel=False)
 
     model.to(device)
 

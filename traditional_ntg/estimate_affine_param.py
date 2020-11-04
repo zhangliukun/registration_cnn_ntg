@@ -40,7 +40,7 @@ def estimate_param_batch(source_image_batch,target_image_batch,theta_opencv_batc
 
 # 单个传统方法的运算
 # img1是target_image, img2是source_image
-def estimate_affine_param(img1,img2,p=None,itermax = 300):
+def estimate_affine_param(img1,img2,p=None,itermax = 800,custom_pyramid_level=-1):
     '''
     :param img1: img1是target_image [h,w]
     :param img2: img2是source_image
@@ -73,6 +73,8 @@ def estimate_affine_param(img1,img2,p=None,itermax = 300):
     pyramid_level2 = 1 + np.floor(np.log(img1.shape[1] / options["minSize"]) / np.log(options["pyramid_spacing"]));
     options['pyramid_levels'] = np.min((int(pyramid_level1),int(pyramid_level2)));
     #options['pyramid_levels'] = 6
+    if custom_pyramid_level > 0:
+        options['pyramid_levels'] = custom_pyramid_level
 
     IMAX = np.max([np.max(img1),np.max(img2)])
     IMIN = np.min([np.min(img1),np.min(img2)])

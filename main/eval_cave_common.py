@@ -119,7 +119,7 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
 
                 ntg_param_batch = estimate_aff_param_iterator(source_image_batch[:, 0, :, :].unsqueeze(1),
                                                               target_image_batch[:, 0, :, :].unsqueeze(1),
-                                                              None, use_cuda=use_cuda, itermax=600,normalize_func=normalize_func)
+                                                              None, use_cuda=use_cuda, itermax=800,normalize_func=normalize_func)
 
 
                 ntg_param_pytorch_batch = param2theta(ntg_param_batch, 240, 240, use_cuda=use_cuda)
@@ -149,11 +149,11 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
         # source_image_batch = normalize_func.scale_image_batch(source_image_batch)
         # target_image_batch = normalize_func.scale_image_batch(target_image_batch)
 
-        # cnn_wraped_image = affine_transform_pytorch(source_image_batch, theta_estimate_batch)
-        # cvpr_wraped_image = affine_transform_pytorch(source_image_batch, theta_cvpr_batch)
-        # ntg_wraped_image = affine_transform_pytorch(source_image_batch, ntg_param_pytorch_batch)
-        # cnn_ntg_wraped_image = affine_transform_pytorch(source_image_batch, cnn_ntg_param_pytorch_batch)
-        # gt_wraped_image = affine_transform_pytorch(source_image_batch, theta_GT_batch)
+        cnn_wraped_image = affine_transform_pytorch(source_image_batch, theta_estimate_batch)
+        cvpr_wraped_image = affine_transform_pytorch(source_image_batch, theta_cvpr_batch)
+        ntg_wraped_image = affine_transform_pytorch(source_image_batch, ntg_param_pytorch_batch)
+        cnn_ntg_wraped_image = affine_transform_pytorch(source_image_batch, cnn_ntg_param_pytorch_batch)
+        gt_image_batch = affine_transform_pytorch(source_image_batch, theta_GT_batch)
 
         # mutual_info_cnn_list.append(calculate_mutual_info_batch(cnn_wraped_image, gt_wraped_image))
         # mutual_info_cvpr_list.append(calculate_mutual_info_batch(cvpr_wraped_image, gt_wraped_image))
@@ -162,12 +162,13 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
 
         #
         normailze_visual = False
-        # vis.showImageBatch(source_image_batch,normailze=normailze_visual,win='source_image_batch',title='source_image_batch',start_index=14)
-        # vis.showImageBatch(target_image_batch,normailze=normailze_visual,win='target_image_batch',title='target_image_batch',start_index=14)
-        # vis.showImageBatch(ntg_wraped_image,normailze=normailze_visual,win='ntg_wraped_image',title='ntg_wraped_image',start_index=14)
-        # vis.showImageBatch(cnn_wraped_image,normailze=normailze_visual,win='cnn_wraped_image',title='cnn_wraped_image')
-        # vis.showImageBatch(cnn_ntg_wraped_image,normailze=True,win='cnn_ntg_wraped_image',title='ntg_pytorch')
-        # vis.showImageBatch(gt_image_batch,normailze=True,win='gt_image_batch',title='gt_image_batch')
+        vis.showImageBatch(source_image_batch,normailze=True,win='source_image_batch',title='source_image_batch',start_index=14)
+        vis.showImageBatch(target_image_batch,normailze=True,win='target_image_batch',title='target_image_batch',start_index=14)
+        vis.showImageBatch(ntg_wraped_image,normailze=True,win='ntg_wraped_image',title='ntg_wraped_image',start_index=14)
+        vis.showImageBatch(cvpr_wraped_image,normailze=True,win='cvpr_wraped_image',title='cvpr_wraped_image')
+        vis.showImageBatch(cnn_wraped_image, normailze=True, win='cnn_wraped_image', title='cnn_wraped_image')
+        vis.showImageBatch(cnn_ntg_wraped_image,normailze=True,win='cnn_ntg_wraped_image',title='cnn_ntg_wraped_image')
+        vis.showImageBatch(gt_image_batch,normailze=True,win='gt_image_batch',title='gt_image_batch')
 
         # print(image_name)
 
@@ -190,10 +191,10 @@ def iterDataset(dataloader,pair_generator,ntg_model,cvpr_model,vis,threshold=10,
     # if use_combine and save_mat:
     #     scio.savemat('exp_bigger/cnn_ntg_error.mat', {'cave_error_cnn_ntg': grid_loss_comb_array})
 
-    scio.savemat('cave_grid_loss.mat',{'cave_cnn': grid_loss_cnn_array,
-                                 'cave_ntg': grid_loss_ntg_array,
-                                 'cave_cnn_ntg': grid_loss_comb_array,
-                                 'cave_cvpr': grid_loss_cvpr_array})
+    # scio.savemat('cave_grid_loss.mat',{'cave_cnn': grid_loss_cnn_array,
+    #                              'cave_ntg': grid_loss_ntg_array,
+    #                              'cave_cnn_ntg': grid_loss_comb_array,
+    #                              'cave_cvpr': grid_loss_cvpr_array})
 
     print("网格点损失超过阈值的不计入平均值")
     print('ntg网格点损失')
@@ -226,7 +227,7 @@ if __name__ == '__main__':
 
     print("开始进行测试")
 
-    param_gpu_id = 0
+    param_gpu_id = 2
     param_single_channel = True
     param_threshold = 3
     param_batch_size = 1
@@ -238,7 +239,7 @@ if __name__ == '__main__':
 
     print(param_gpu_id,param_single_channel,param_threshold,param_batch_size)
 
-    vis = VisdomHelper(env_name='CAVE_common')
+    vis = VisdomHelper(env_name='CAVE_common',port=8098)
 
     if param_single_channel:
         param_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar'

@@ -23,7 +23,7 @@ def register_images(source_image_path,target_image_path,use_cuda=True):
     vis = VisdomHelper(env_name)
 
     # 创建模型
-    ntg_model = CNNRegistration(use_cuda=use_cuda)
+    ntg_model = CNNRegistration(single_channel=True,use_cuda=use_cuda)
 
     print("Loading trained model weights")
     print("ntg_checkpoint_path:",ntg_checkpoint_path)
@@ -85,7 +85,7 @@ def register_images(source_image_path,target_image_path,use_cuda=True):
 
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-    ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/three_channel/checkpoint_NTG_resnet101.pth.tar'
+    ntg_checkpoint_path = '/home/zlk/project/registration_cnn_ntg/trained_weight/output/voc2012_coco2014_NTG_resnet101.pth.tar'
 
     use_cuda = torch.cuda.is_available()
     # source_image_path = '../datasets/row_data/multispectral/Ir.jpg'
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     # target_image_path = '../datasets/row_data/multispectral/It.jpg'
     # target_image_path = '../datasets/row_data/multispectral/target.jpg'
 
-    source_image_path = io.imread('../datasets/row_data/texs1.jpeg')
-    target_image_path = io.imread('../datasets/row_data/test2.jpeg')
+    source_image_path = '../datasets/row_data/texs1.jpeg'
+    target_image_path = '../datasets/row_data/test2.jpeg'
 
     register_images(source_image_path,target_image_path,use_cuda)

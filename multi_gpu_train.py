@@ -132,7 +132,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
 
 
     print("创建模型中")
-    model = CNNRegistration(use_cuda=use_cuda)
+    model = CNNRegistration(use_cuda=use_cuda,single_channel=False)
 
     model = model.to(device)
 

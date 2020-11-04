@@ -118,7 +118,7 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
 
 
     print("创建模型中")
-    model = CNNRegistration(use_cuda=use_cuda)
+    model = CNNRegistration(use_cuda=use_cuda,single_channel=False)
 
     model = model.to(device)
 
@@ -162,8 +162,11 @@ def start_train(training_path,test_image_path,load_from,out_path,vis_env,paper_a
     for epoch in range(saved_epoch, args.num_epochs):
         start_time = time.time()
 
+        # train_loss = train(epoch, model, loss, optimizer, train_dataloader, pair_generator, gridGen, vis,
+        #                    use_cuda=use_cuda, log_interval=log_interval,scheduler = scheduler)
+
         train_loss = train(epoch, model, loss, optimizer, train_dataloader, pair_generator, gridGen, vis,
-                           use_cuda=use_cuda, log_interval=log_interval,scheduler = scheduler)
+                           use_cuda=use_cuda, log_interval=log_interval)
 
         if draw_test_loss:
             test_loss = test(model,loss,test_dataloader,pair_generator,gridGen,use_cuda=use_cuda)

@@ -6,9 +6,10 @@ from tnf_transform.img_process import normalize_image
 import numpy as np
 
 class VisdomHelper:
-    def __init__(self,env_name):
+    def __init__(self,env_name,port=8088):
         self.env_name = env_name
-        self.vis = visdom.Visdom(env = self.env_name)
+        self.vis = visdom.Visdom(env = self.env_name,port=port)
+        self.index_slice = [0,5,10,15,20,25]
 
     def drawImage(self, source_image_batch, warped_image_batch, target_image_batch,single_channel = True,show_size=8):
         if source_image_batch.shape[0] > show_size:
@@ -130,7 +131,7 @@ class VisdomHelper:
             image_batch = torch.clamp(image_batch, 0, 1)
 
         # self.vis.images(image_batch[0:show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
-        self.vis.images(image_batch[start_index:start_index+show_num],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
+        self.vis.images(image_batch[self.index_slice],win=win,opts=dict(title=title, caption='image_batch', width=1400, height=150, jpgquality=40))
 
     def showHarvardBatch(self,image_batch,win='image',title='image',normailze=False,show_num=8,start_index = 0):
         if normailze:

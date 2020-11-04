@@ -18,7 +18,7 @@ from ntg_pytorch.register_pyramid import ScaleTnf
 from tnf_transform.img_process import random_affine, generator_affine_param, generate_affine_param
 from tnf_transform.transformation import AffineTnf, affine_transform_opencv_batch
 from traditional_ntg.image_util import symmetricImagePad, scale_image
-from util.pytorchTcv import param2theta, theta2param
+from util.pytorchTcv import param2theta, theta2param, inverse_theta
 from util.time_util import calculate_diff_time
 
 '''
@@ -147,9 +147,6 @@ class HarvardDataPair(object):
                                                self.padding_factor,
                                                self.crop_factor)  # Identity is used as no theta given
 
-        # theta_opencv_batch = theta2param(theta_batch,w,h,use_cuda=False)
-        # warped_image_batch = affine_transform_opencv_batch(image_batch, theta_opencv_batch, use_cuda=False)
-
         raw_source_image_batch = image_batch
         raw_target_image_batch = self.rawTnf(image_batch,theta_batch,self.padding_factor,self.crop_factor)
 
@@ -162,10 +159,18 @@ class HarvardDataPair(object):
 
         b, c, h, w = warped_image_batch.size()
 
-        warped_image_batch = torch.index_select(warped_image_batch,0,spec_channel).expand(b,c,h,w)
+        # warped_image_batch = torch.index_select(warped_image_batch,0,spec_channel).expand(b,c,h,w)
         raw_target_image_batch = torch.index_select(raw_target_image_batch,0,spec_channel).expand(b,c,512,512)
 
-        return {'source_image': cropped_image_batch, 'target_image': warped_image_batch,
+        # return {'source_image': cropped_image_batch, 'target_image': warped_image_batch,
+        #         'raw_source_image_batch': raw_source_image_batch, 'raw_target_image_batch': raw_target_image_batch,
+        #         'theta_GT': theta_batch,'name':image_name}
+
+        theta_batch = inverse_theta(theta_batch,use_cuda=True)
+
+        cropped_image_batch = torch.index_select(cropped_image_batch, 0, spec_channel).expand(b, c, h, w)
+
+        return {'source_image': warped_image_batch, 'target_image': cropped_image_batch,
                 'raw_source_image_batch': raw_source_image_batch, 'raw_target_image_batch': raw_target_image_batch,
                 'theta_GT': theta_batch,'name':image_name}
 
